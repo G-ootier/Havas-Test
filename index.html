@@ -408,11 +408,10 @@
     ];
 
     const FINGERS = [
-      { name: 'thumb', label: 'Thumb' },
-      { name: 'index', label: 'Index finger' },
-      { name: 'middle', label: 'Middle finger' },
-      { name: 'ring', label: 'Ring finger' },
-      { name: 'pinky', label: 'Pinky' },
+      { name: 'finger1', label: '1st finger' },
+      { name: 'finger2', label: '2nd finger' },
+      { name: 'finger3', label: '3rd finger' },
+      { name: 'finger4', label: '4th finger' },
     ];
 
     const GRID_COLS = 3;
@@ -490,7 +489,6 @@
     // ── Step Generation ──
     function generateSteps() {
       steps = [];
-      var usedFingers = [];
       var usedColors = [];
       var usedCircleIndices = [];
 
@@ -504,12 +502,8 @@
       }
 
       for (var i = 0; i < NUM_STEPS; i++) {
-        // Pick a random finger not yet used
-        var finger;
-        do {
-          finger = FINGERS[Math.floor(Math.random() * FINGERS.length)];
-        } while (usedFingers.indexOf(finger.name) !== -1);
-        usedFingers.push(finger.name);
+        // Fingers go in order: 1st, 2nd, 3rd, 4th
+        var finger = FINGERS[i];
 
         // Use the next unique color
         var color = shuffledColors[i];
