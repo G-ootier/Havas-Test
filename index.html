@@ -205,10 +205,15 @@
       position: absolute;
       inset: 0;
       display: grid;
-      padding: 100px 16px 16px;
+      padding: 120px 20px 20px;
+      place-items: center;
     }
     .circle {
       border-radius: 50%;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      max-width: 100px;
+      max-height: 100px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -486,7 +491,17 @@
     function generateSteps() {
       steps = [];
       var usedFingers = [];
+      var usedColors = [];
       var usedCircleIndices = [];
+
+      // Shuffle colors so each step gets a different color
+      var shuffledColors = COLORS.slice();
+      for (var j = shuffledColors.length - 1; j > 0; j--) {
+        var r = Math.floor(Math.random() * (j + 1));
+        var tmp = shuffledColors[j];
+        shuffledColors[j] = shuffledColors[r];
+        shuffledColors[r] = tmp;
+      }
 
       for (var i = 0; i < NUM_STEPS; i++) {
         // Pick a random finger not yet used
@@ -496,8 +511,8 @@
         } while (usedFingers.indexOf(finger.name) !== -1);
         usedFingers.push(finger.name);
 
-        // Pick a random color
-        var color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        // Use the next unique color
+        var color = shuffledColors[i];
 
         // Find circles of that color that aren't used yet
         var available = [];
@@ -507,7 +522,7 @@
           }
         });
 
-        // If no available circle of this color, pick any unused circle
+        // If no available circle of this color, pick any unused circle with an unused color
         var targetIdx, targetColor;
         if (available.length > 0) {
           var pick = available[Math.floor(Math.random() * available.length)];
@@ -516,16 +531,24 @@
         } else {
           var anyAvailable = [];
           board.forEach(function(c, idx) {
-            if (usedCircleIndices.indexOf(idx) === -1) {
+            if (usedCircleIndices.indexOf(idx) === -1 && usedColors.indexOf(c.name) === -1) {
               anyAvailable.push({ color: c, idx: idx });
             }
           });
+          if (anyAvailable.length === 0) {
+            board.forEach(function(c, idx) {
+              if (usedCircleIndices.indexOf(idx) === -1) {
+                anyAvailable.push({ color: c, idx: idx });
+              }
+            });
+          }
           var pick2 = anyAvailable[Math.floor(Math.random() * anyAvailable.length)];
           targetIdx = pick2.idx;
           targetColor = pick2.color;
         }
 
         usedCircleIndices.push(targetIdx);
+        usedColors.push(targetColor.name);
         steps.push({ finger: finger, color: targetColor, circleIndex: targetIdx });
       }
     }
