@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>Connect 4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+
+    html, body {
+      width:100%; height:100%; overflow:hidden;
+      font-family: 'Fredoka', 'Arial Rounded MT Bold', Arial, sans-serif;
+      background-color: #1565C0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.22) 3px, transparent 3px);
+      background-size: 28px 28px;
+      color:#fff;
+      touch-action: none;
+    }
+
+    /* ── Screens ── */
+    .screen { display:none; position:absolute; inset:0; flex-direction:column; align-items:center; justify-content:center; }
+    .screen.active { display:flex; }
+
+    /* ── Shared btn ── */
+    .btn {
+      padding:16px 40px;
+      border:none; border-radius:50px;
+      font-size:18px; font-weight:700; font-family:inherit;
+      text-transform:uppercase; letter-spacing:1px;
+      cursor:pointer;
+      transition:transform 0.12s;
+    }
+    .btn:active { transform:scale(0.95); }
+    .btn-red   { background:linear-gradient(135deg,#E53935,#B71C1C); color:#fff; box-shadow:0 6px 20px rgba(0,0,0,0.3); }
+    .btn-ghost { background:rgba(255,255,255,0.15); color:#fff; border:2px solid rgba(255,255,255,0.3); font-size:14px; padding:12px 28px; }
+
+    /* ── Player select screen ── */
+    #select-screen { gap:20px; padding:32px 24px; text-align:center; }
+    .c4-logo { width:200px; margin-bottom:4px; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4)); }
+    .select-title { font-size:22px; font-weight:700; color:#FFD700; -webkit-text-stroke:1.5px #1a1a1a; }
+    .select-sub { font-size:14px; color:rgba(255,255,255,0.7); }
+
+    .vs-row {
+      display:flex; align-items:center; gap:16px; width:100%; max-width:340px;
+    }
+    .player-pick {
+      flex:1;
+      background:rgba(255,255,255,0.12);
+      border:3px solid rgba(255,255,255,0.2);
+      border-radius:16px;
+      padding:14px 10px;
+      text-align:center;
+      cursor:pointer;
+      transition:border-color 0.2s, background 0.2s;
+    }
+    .player-pick.p1 { border-color:#FFD700; background:rgba(255,215,0,0.15); }
+    .player-pick.p2 { border-color:#E53935; background:rgba(229,57,53,0.15); }
+    .player-pick .token {
+      width:36px; height:36px; border-radius:50%; margin:0 auto 8px;
+    }
+    .token-yellow { background:radial-gradient(circle at 35% 35%, #FFE082, #FFC107); box-shadow:0 3px 8px rgba(0,0,0,0.3); }
+    .token-red    { background:radial-gradient(circle at 35% 35%, #EF9A9A, #E53935); box-shadow:0 3px 8px rgba(0,0,0,0.3); }
+    .player-pick .pick-name { font-size:16px; font-weight:700; }
+    .player-pick .pick-hint { font-size:11px; opacity:0.6; margin-top:2px; }
+    .vs-label { font-size:22px; font-weight:700; color:#FFD700; -webkit-text-stroke:1px #1a1a1a; }
+
+    .select-dropdown {
+      width:100%; max-width:340px;
+      background:rgba(255,255,255,0.12);
+      border:2px solid rgba(255,255,255,0.3);
+      border-radius:12px;
+      padding:10px;
+      display:none;
+      flex-direction:column;
+      gap:6px;
+    }
+    .select-dropdown.visible { display:flex; }
+    .pick-option {
+      padding:10px 14px;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:15px;
+      font-weight:600;
+    }
+    .pick-option:hover, .pick-option:active { background:rgba(255,255,255,0.2); }
+
+    /* ── Game screen ── */
+    #game-screen { padding:0; justify-content:flex-start; }
+
+    .turn-bar {
+      width:100%; padding:14px 20px 10px;
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0;
+    }
+    .turn-info {
+      display:flex; align-items:center; gap:10px;
+    }
+    .turn-token { width:28px; height:28px; border-radius:50%; flex-shrink:0; }
+    .turn-name { font-size:18px; font-weight:700; }
+    .turn-label { font-size:12px; color:rgba(255,255,255,0.6); }
+    .btn-back-sm {
+      background:rgba(255,255,255,0.15);
+      border:none; border-radius:50px;
+      padding:8px 14px;
+      color:#fff; font-size:12px; font-family:inherit;
+      cursor:pointer;
+    }
+
+    /* drop indicators */
+    .drop-row {
+      width:100%;
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      padding:0 10px 4px;
+      flex-shrink:0;
+    }
+    .drop-arrow {
+      display:flex; align-items:center; justify-content:center;
+      height:28px; font-size:18px;
+      opacity:0; transition:opacity 0.2s;
+    }
+    .drop-arrow.visible { opacity:1; }
+
+    /* board */
+    .board-wrap {
+      flex:1;
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0 10px 10px;
+    }
+    .board {
+      background:#0D47A1;
+      border-radius:16px;
+      padding:10px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.4);
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      grid-template-rows:repeat(6,1fr);
+      gap:6px;
+      width:100%;
+      max-width:400px;
+      aspect-ratio:7/6;
+    }
+    .cell {
+      border-radius:50%;
+      background:rgba(255,255,255,0.15);
+      transition:background 0.15s;
+      cursor:pointer;
+      aspect-ratio:1/1;
+    }
+    .cell.p1 { background:radial-gradient(circle at 35% 35%, #FFE082, #FFC107); box-shadow:inset 0 -3px 6px rgba(0,0,0,0.2); }
+    .cell.p2 { background:radial-gradient(circle at 35% 35%, #EF9A9A, #E53935); box-shadow:inset 0 -3px 6px rgba(0,0,0,0.2); }
+    .cell.win { animation:win-pulse 0.6s ease-in-out infinite alternate; }
+    @keyframes win-pulse {
+      from { transform:scale(1); box-shadow:inset 0 -3px 6px rgba(0,0,0,0.2); }
+      to   { transform:scale(1.12); box-shadow:0 0 0 4px rgba(255,255,255,0.6); }
+    }
+
+    /* column tap zones */
+    .col-zones {
+      position:absolute;
+      inset:0;
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      pointer-events:none;
+    }
+    .col-zone {
+      pointer-events:auto;
+      cursor:pointer;
+    }
+
+    /* ── Win screen ── */
+    #win-screen { gap:24px; padding:40px 24px; text-align:center; }
+    .win-emoji { font-size:80px; line-height:1; }
+    .win-title { font-size:36px; font-weight:700; color:#FFD700; -webkit-text-stroke:2px #1a1a1a; }
+    .win-name  { font-size:28px; font-weight:700; }
+    .win-sub   { font-size:15px; color:rgba(255,255,255,0.7); }
+    .win-token-big {
+      width:60px; height:60px; border-radius:50%;
+      margin:0 auto;
+    }
+
+    /* draw screen */
+    #draw-screen { gap:24px; padding:40px 24px; text-align:center; }
+    .draw-title { font-size:32px; font-weight:700; color:#fff; }
+  </style>
+</head>
+<body>
+
+  <!-- Player Select -->
+  <div id="select-screen" class="screen active">
+    <img src="Sources/Connect_4_2013.webp" alt="Connect 4" class="c4-logo">
+    <div class="select-title">Choose your players</div>
+    <div class="select-sub">Tap a name to change</div>
+
+    <div class="vs-row">
+      <div class="player-pick" id="pick-p1" onclick="openPicker(1)">
+        <div class="token token-yellow"></div>
+        <div class="pick-name" id="pick-p1-name">Player 1</div>
+        <div class="pick-hint">tap to change</div>
+      </div>
+      <div class="vs-label">VS</div>
+      <div class="player-pick" id="pick-p2" onclick="openPicker(2)">
+        <div class="token token-red"></div>
+        <div class="pick-name" id="pick-p2-name">Player 2</div>
+        <div class="pick-hint">tap to change</div>
+      </div>
+    </div>
+
+    <div class="select-dropdown" id="picker-dropdown"></div>
+    <button class="btn btn-red" id="btn-play-c4">Play!</button>
+    <button class="btn btn-ghost" onclick="goBack()">Back</button>
+  </div>
+
+  <!-- Game -->
+  <div id="game-screen" class="screen">
+    <div class="turn-bar">
+      <div class="turn-info">
+        <div class="turn-token" id="turn-token"></div>
+        <div>
+          <div class="turn-name" id="turn-name">Player 1</div>
+          <div class="turn-label">your turn</div>
+        </div>
+      </div>
+      <button class="btn-back-sm" onclick="goBack()">Menu</button>
+    </div>
+
+    <div class="drop-row" id="drop-row">
+      <!-- arrows injected by JS -->
+    </div>
+
+    <div class="board-wrap">
+      <div style="position:relative; width:100%; max-width:400px;">
+        <div class="board" id="board"></div>
+        <div class="col-zones" id="col-zones"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Win -->
+  <div id="win-screen" class="screen">
+    <div class="win-emoji">🏆</div>
+    <div class="win-token-big" id="win-token"></div>
+    <div class="win-title">Winner!</div>
+    <div class="win-name" id="win-name">Player 1</div>
+    <div class="win-sub" id="win-sub">connected 4 in a row</div>
+    <button class="btn btn-red" id="btn-play-again">Play Again</button>
+    <button class="btn btn-ghost" onclick="goBack()">Back to Menu</button>
+  </div>
+
+  <!-- Draw -->
+  <div id="draw-screen" class="screen">
+    <div style="font-size:64px;">🤝</div>
+    <div class="draw-title">It's a draw!</div>
+    <div class="win-sub">The board is full — well played both!</div>
+    <button class="btn btn-red" id="btn-play-again-draw">Play Again</button>
+    <button class="btn btn-ghost" onclick="goBack()">Back to Menu</button>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    var COLS = 7, ROWS = 6;
+    var state = [];      // [row][col] 0=empty,1=p1,2=p2
+    var currentPlayer = 1;
+    var gameOver = false;
+    var hoverCol = -1;
+    var p1Name = 'Player 1';
+    var p2Name = 'Player 2';
+    var pickerTarget = 1;
+
+    // ── Init ──────────────────────────────────────────────
+    function init() {
+      var players = HG.getPlayers();
+      p1Name = players[0] || 'Player 1';
+      p2Name = players[1] || 'Player 2';
+      document.getElementById('pick-p1-name').textContent = p1Name;
+      document.getElementById('pick-p2-name').textContent = p2Name;
+    }
+
+    // ── Player picker ──────────────────────────────────────
+    function openPicker(target) {
+      pickerTarget = target;
+      var players = HG.getPlayers();
+      var dropdown = document.getElementById('picker-dropdown');
+      while (dropdown.firstChild) dropdown.removeChild(dropdown.firstChild);
+
+      players.forEach(function(name) {
+        var opt = document.createElement('div');
+        opt.className = 'pick-option';
+        opt.textContent = name;
+        opt.addEventListener('click', function() {
+          if (pickerTarget === 1) {
+            p1Name = name;
+            document.getElementById('pick-p1-name').textContent = name;
+          } else {
+            p2Name = name;
+            document.getElementById('pick-p2-name').textContent = name;
+          }
+          dropdown.classList.remove('visible');
+        });
+        dropdown.appendChild(opt);
+      });
+      dropdown.classList.toggle('visible');
+    }
+
+    document.getElementById('btn-play-c4').addEventListener('click', startGame);
+    document.getElementById('btn-play-again').addEventListener('click', startGame);
+    document.getElementById('btn-play-again-draw').addEventListener('click', startGame);
+
+    // ── Game logic ──────────────────────────────────────────
+    function startGame() {
+      // Reset state
+      state = [];
+      for (var r = 0; r < ROWS; r++) {
+        state[r] = [];
+        for (var c = 0; c < COLS; c++) state[r][c] = 0;
+      }
+      currentPlayer = 1;
+      gameOver = false;
+      hoverCol = -1;
+      showScreen('game-screen');
+      buildBoard();
+      buildColZones();
+      buildDropRow();
+      updateTurnBar();
+    }
+
+    function buildBoard() {
+      var board = document.getElementById('board');
+      while (board.firstChild) board.removeChild(board.firstChild);
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.id = 'cell-' + r + '-' + c;
+          board.appendChild(cell);
+        }
+      }
+    }
+
+    function buildDropRow() {
+      var row = document.getElementById('drop-row');
+      while (row.firstChild) row.removeChild(row.firstChild);
+      for (var c = 0; c < COLS; c++) {
+        var arrow = document.createElement('div');
+        arrow.className = 'drop-arrow';
+        arrow.id = 'arrow-' + c;
+        arrow.textContent = '▼';
+        row.appendChild(arrow);
+      }
+    }
+
+    function buildColZones() {
+      var zones = document.getElementById('col-zones');
+      while (zones.firstChild) zones.removeChild(zones.firstChild);
+      for (var c = 0; c < COLS; c++) {
+        (function(col) {
+          var zone = document.createElement('div');
+          zone.className = 'col-zone';
+          zone.addEventListener('touchstart', function(e) { e.preventDefault(); showArrow(col); }, { passive:false });
+          zone.addEventListener('touchend', function(e) { e.preventDefault(); dropPiece(col); hideArrows(); }, { passive:false });
+          zone.addEventListener('touchcancel', function() { hideArrows(); });
+          zone.addEventListener('mouseenter', function() { showArrow(col); });
+          zone.addEventListener('mouseleave', function() { hideArrows(); });
+          zone.addEventListener('click', function() { dropPiece(col); });
+          zones.appendChild(zone);
+        })(c);
+      }
+    }
+
+    function showArrow(col) {
+      hideArrows();
+      var arrow = document.getElementById('arrow-' + col);
+      if (arrow) arrow.classList.add('visible');
+    }
+    function hideArrows() {
+      for (var c = 0; c < COLS; c++) {
+        var a = document.getElementById('arrow-' + c);
+        if (a) a.classList.remove('visible');
+      }
+    }
+
+    function dropPiece(col) {
+      if (gameOver) return;
+      // Find lowest empty row
+      var row = -1;
+      for (var r = ROWS - 1; r >= 0; r--) {
+        if (state[r][col] === 0) { row = r; break; }
+      }
+      if (row === -1) return; // column full
+
+      state[row][col] = currentPlayer;
+      renderCell(row, col);
+
+      var win = checkWin(row, col);
+      if (win) {
+        highlightWin(win);
+        showWin();
+        return;
+      }
+      if (checkDraw()) {
+        showScreen('draw-screen');
+        return;
+      }
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      updateTurnBar();
+    }
+
+    function renderCell(row, col) {
+      var cell = document.getElementById('cell-' + row + '-' + col);
+      if (!cell) return;
+      cell.className = 'cell' + (state[row][col] === 1 ? ' p1' : state[row][col] === 2 ? ' p2' : '');
+    }
+
+    function renderBoard() {
+      for (var r = 0; r < ROWS; r++)
+        for (var c = 0; c < COLS; c++)
+          renderCell(r, c);
+    }
+
+    function updateTurnBar() {
+      var isP1 = currentPlayer === 1;
+      var tokenEl = document.getElementById('turn-token');
+      tokenEl.style.background = isP1
+        ? 'radial-gradient(circle at 35% 35%, #FFE082, #FFC107)'
+        : 'radial-gradient(circle at 35% 35%, #EF9A9A, #E53935)';
+      document.getElementById('turn-name').textContent = isP1 ? p1Name : p2Name;
+    }
+
+    // ── Win detection ──────────────────────────────────────
+    function checkWin(row, col) {
+      var p = state[row][col];
+      var dirs = [[0,1],[1,0],[1,1],[1,-1]];
+      for (var d = 0; d < dirs.length; d++) {
+        var dr = dirs[d][0], dc = dirs[d][1];
+        var cells = [[row, col]];
+        for (var step = 1; step < 4; step++) {
+          var r2 = row + dr*step, c2 = col + dc*step;
+          if (r2<0||r2>=ROWS||c2<0||c2>=COLS||state[r2][c2]!==p) break;
+          cells.push([r2, c2]);
+        }
+        for (var step = 1; step < 4; step++) {
+          var r2 = row - dr*step, c2 = col - dc*step;
+          if (r2<0||r2>=ROWS||c2<0||c2>=COLS||state[r2][c2]!==p) break;
+          cells.push([r2, c2]);
+        }
+        if (cells.length >= 4) return cells;
+      }
+      return null;
+    }
+
+    function checkDraw() {
+      for (var c = 0; c < COLS; c++)
+        if (state[0][c] === 0) return false;
+      return true;
+    }
+
+    function highlightWin(cells) {
+      cells.forEach(function(pos) {
+        var cell = document.getElementById('cell-' + pos[0] + '-' + pos[1]);
+        if (cell) cell.classList.add('win');
+      });
+    }
+
+    function showWin() {
+      gameOver = true;
+      var isP1 = currentPlayer === 1;
+      var name = isP1 ? p1Name : p2Name;
+      document.getElementById('win-name').textContent = name + ' wins!';
+      document.getElementById('win-token').style.background = isP1
+        ? 'radial-gradient(circle at 35% 35%, #FFE082, #FFC107)'
+        : 'radial-gradient(circle at 35% 35%, #EF9A9A, #E53935)';
+      setTimeout(function() { showScreen('win-screen'); }, 800);
+    }
+
+    // ── Screens ────────────────────────────────────────────
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+      document.getElementById(id).classList.add('active');
+    }
+
+    function goBack() {
+      window.location.href = 'index.html';
+    }
+
+    // ── Boot ───────────────────────────────────────────────
+    init();
+  </script>
+</body>
+</html>

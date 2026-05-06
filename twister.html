@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>Twister — Finger Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+
+    html, body {
+      width:100%; height:100%; overflow:hidden;
+      font-family:'Fredoka','Arial Rounded MT Bold',Arial,sans-serif;
+      background:#1a1a2e; color:#fff;
+      touch-action:none;
+    }
+
+    .screen { display:none; position:absolute; inset:0; flex-direction:column; align-items:center; justify-content:center; }
+    .screen.active { display:flex; }
+
+    /* ── Lobby ── */
+    #lobby-screen {
+      background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+      gap:20px; padding:40px 24px; text-align:center;
+    }
+    #lobby-screen .logo { width:180px; height:auto; }
+    .lobby-title { font-size:20px; font-weight:700; color:#e9c46a; text-transform:uppercase; letter-spacing:3px; }
+    .player-turn-badge {
+      background:rgba(255,255,255,0.12);
+      border:2px solid rgba(255,255,255,0.2);
+      border-radius:20px;
+      padding:16px 28px;
+      text-align:center;
+    }
+    .player-turn-badge .badge-label { font-size:13px; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:1px; }
+    .player-turn-badge .badge-name { font-size:28px; font-weight:700; color:#FFD700; margin-top:4px; }
+    .player-turn-badge .badge-sub { font-size:13px; color:rgba(255,255,255,0.5); margin-top:2px; }
+    .btn { padding:16px 48px; border:none; border-radius:50px; font-size:18px; font-weight:700; cursor:pointer; transition:transform 0.15s; text-transform:uppercase; letter-spacing:1px; font-family:inherit; }
+    .btn:active { transform:scale(0.95); }
+    .btn-play { background:linear-gradient(135deg,#e63946,#d62839); color:#fff; box-shadow:0 6px 24px rgba(230,57,70,0.4); }
+    .btn-secondary { background:rgba(255,255,255,0.1); color:#fff; border:2px solid rgba(255,255,255,0.2); font-size:14px; padding:12px 32px; }
+    .standings-mini { width:100%; max-width:320px; }
+    .standings-mini-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 12px; border-radius:10px;
+      background:rgba(255,255,255,0.07); margin-bottom:6px;
+      font-size:14px;
+    }
+    .standings-mini-row .sname { font-weight:700; }
+    .standings-mini-row .sscore { color:#e9c46a; font-weight:600; }
+    .standings-mini-row .sdone { color:#2a9d8f; font-size:12px; }
+
+    /* ── Game ── */
+    #game-screen { background:#111122; flex-direction:column; }
+    .game-header { position:absolute; top:0; left:0; right:0; z-index:20; padding:16px 16px 12px; background:linear-gradient(to bottom,rgba(17,17,34,0.95) 0%,rgba(17,17,34,0) 100%); pointer-events:none; }
+    .instruction-bar { background:rgba(255,255,255,0.1); backdrop-filter:blur(10px); border-radius:16px; padding:14px 20px; text-align:center; pointer-events:auto; }
+    .player-badge { font-size:12px; font-weight:700; color:#FFD700; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+    .instruction-text { font-size:20px; font-weight:700; line-height:1.4; }
+    .instruction-sub { font-size:13px; color:#a0a0c0; margin-top:4px; }
+    .finger-name { text-transform:uppercase; font-weight:800; }
+    .progress-dots { display:flex; justify-content:center; gap:8px; margin-top:10px; }
+    .progress-dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.15); transition:background 0.3s,transform 0.3s; }
+    .progress-dot.done { background:#2a9d8f; transform:scale(1.2); }
+    .progress-dot.current { background:#e9c46a; transform:scale(1.3); animation:pulse-dot 1s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{transform:scale(1.3);}50%{transform:scale(1.6);} }
+
+    .board { position:absolute; inset:0; display:grid; padding:120px 20px 20px; place-items:center; }
+    .circle { border-radius:50%; width:100%; aspect-ratio:1/1; max-width:100px; max-height:100px; display:flex; align-items:center; justify-content:center; transition:transform 0.2s,box-shadow 0.2s,opacity 0.2s; position:relative; }
+    .circle.target { animation:pulse-target 1.2s ease-in-out infinite; z-index:10; }
+    @keyframes pulse-target { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.3);}50%{box-shadow:0 0 0 12px rgba(255,255,255,0);} }
+    .circle.touched { transform:scale(0.9); opacity:0.7; }
+    .circle.dimmed { opacity:0.3; }
+    .color-red    { background:radial-gradient(circle at 35% 35%,#ff6b6b,#e63946); }
+    .color-blue   { background:radial-gradient(circle at 35% 35%,#74b9ff,#457b9d); }
+    .color-green  { background:radial-gradient(circle at 35% 35%,#55efc4,#2a9d8f); }
+    .color-yellow { background:radial-gradient(circle at 35% 35%,#ffeaa7,#e9c46a); }
+
+    /* ── Fail overlay ── */
+    #fail-overlay { position:absolute; inset:0; z-index:50; background:rgba(230,57,70,0.92); display:none; flex-direction:column; align-items:center; justify-content:center; gap:20px; text-align:center; padding:40px; }
+    #fail-overlay.active { display:flex; }
+    #fail-overlay h2 { font-size:28px; font-weight:800; }
+    #fail-overlay p { font-size:16px; opacity:0.85; line-height:1.5; }
+    .btn-retry { background:#fff; color:#e63946; box-shadow:0 4px 16px rgba(0,0,0,0.2); }
+
+    /* ── Countdown ── */
+    .countdown-overlay { position:absolute; inset:0; z-index:40; background:rgba(17,17,34,0.85); display:none; align-items:center; justify-content:center; flex-direction:column; gap:12px; }
+    .countdown-overlay.active { display:flex; }
+    .countdown-name { font-size:22px; font-weight:700; color:#FFD700; }
+    .countdown-number { font-size:120px; font-weight:900; animation:count-pop 0.6s ease-out; }
+    @keyframes count-pop { 0%{transform:scale(2);opacity:0;}60%{transform:scale(0.9);opacity:1;}100%{transform:scale(1);opacity:1;} }
+
+    /* ── Results ── */
+    #results-screen { background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%); gap:16px; padding:40px 24px; text-align:center; overflow-y:auto; }
+    .results-title { font-size:26px; font-weight:700; color:#FFD700; -webkit-text-stroke:1.5px #1a1a1a; }
+    .results-sub { font-size:14px; color:rgba(255,255,255,0.6); }
+    .results-list { width:100%; max-width:340px; }
+    .result-row {
+      display:flex; align-items:center; gap:12px;
+      padding:12px 16px; border-radius:14px;
+      background:rgba(255,255,255,0.07);
+      margin-bottom:8px;
+    }
+    .result-rank { font-size:22px; width:28px; text-align:center; flex-shrink:0; }
+    .result-name { flex:1; font-size:16px; font-weight:700; text-align:left; }
+    .result-time { font-size:14px; font-weight:600; color:#e9c46a; }
+    .result-row.first { background:rgba(233,196,106,0.2); border:2px solid rgba(233,196,106,0.4); }
+    .result-row.fail-row .result-time { color:#e63946; }
+
+    /* ── Leaderboard ── */
+    #leaderboard-screen { background:linear-gradient(135deg,#1a3a2e 0%,#16213e 100%); gap:16px; padding:40px 24px; text-align:center; overflow-y:auto; }
+    .lb-title { font-size:28px; font-weight:700; color:#55efc4; }
+    .lb-row {
+      display:flex; align-items:center; gap:12px;
+      padding:12px 16px; border-radius:14px;
+      background:rgba(255,255,255,0.07);
+      margin-bottom:8px; width:100%; max-width:340px;
+    }
+    .lb-row.lb-first { background:rgba(42,157,143,0.25); border:2px solid rgba(42,157,143,0.5); }
+    .lb-rank { font-size:22px; width:28px; text-align:center; flex-shrink:0; }
+    .lb-name { flex:1; font-size:16px; font-weight:700; text-align:left; }
+    .lb-score { font-size:14px; font-weight:600; color:#55efc4; }
+
+    /* Confetti */
+    .confetti-container { position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:5; }
+    .confetti-piece { position:absolute; top:-20px; animation:confetti-fall linear forwards; }
+    @keyframes confetti-fall { 0%{transform:translateY(0) rotate(0deg);opacity:1;} 100%{transform:translateY(110vh) rotate(720deg);opacity:0;} }
+  </style>
+</head>
+<body>
+
+  <!-- Lobby: whose turn -->
+  <div id="lobby-screen" class="screen active">
+    <img src="Sources/e8d2632aea80df26cb4968461f1e3ac6.webp" alt="Twister" class="logo">
+    <div class="lobby-title">Finger Edition</div>
+    <div class="player-turn-badge">
+      <div class="badge-label">Up next</div>
+      <div class="badge-name" id="lobby-player-name">Player 1</div>
+      <div class="badge-sub" id="lobby-turn-sub">Turn 1 of 1</div>
+    </div>
+    <div class="standings-mini" id="standings-mini"></div>
+    <button class="btn btn-play" id="btn-go">Go!</button>
+    <button class="btn btn-secondary" onclick="goBack()">Menu</button>
+  </div>
+
+  <!-- Game -->
+  <div id="game-screen" class="screen">
+    <div class="game-header">
+      <div class="instruction-bar">
+        <div class="player-badge" id="game-player-badge"></div>
+        <div class="instruction-text" id="instruction-text">Get ready...</div>
+        <div class="instruction-sub" id="instruction-sub"></div>
+        <div class="progress-dots" id="progress-dots"></div>
+      </div>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="countdown-overlay" id="countdown-overlay">
+      <div class="countdown-name" id="countdown-name"></div>
+      <div class="countdown-number" id="countdown-number">3</div>
+    </div>
+    <div id="fail-overlay">
+      <h2>Oops!</h2>
+      <p id="fail-message">You lifted a finger!</p>
+      <button class="btn btn-retry" id="btn-retry">Try Again</button>
+      <button class="btn btn-secondary" id="btn-skip">Next Player</button>
+    </div>
+  </div>
+
+  <!-- Round results -->
+  <div id="results-screen" class="screen">
+    <div class="confetti-container" id="confetti-round"></div>
+    <div class="results-title">Round Results</div>
+    <div class="results-sub" id="results-sub"></div>
+    <div class="results-list" id="results-list"></div>
+    <button class="btn btn-play" id="btn-next-player" style="margin-top:8px;">Next Player</button>
+    <button class="btn btn-secondary" id="btn-see-lb">See Leaderboard</button>
+  </div>
+
+  <!-- Final leaderboard -->
+  <div id="leaderboard-screen" class="screen">
+    <div class="confetti-container" id="confetti-lb"></div>
+    <div class="lb-title">Leaderboard</div>
+    <div id="lb-rows"></div>
+    <button class="btn btn-play" id="btn-play-again" style="margin-top:8px;">Play Again</button>
+    <button class="btn btn-secondary" onclick="goBack()">Menu</button>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    // ── Config ──
+    var COLORS = [
+      { name:'red',    label:'Red',    css:'color-red'    },
+      { name:'blue',   label:'Blue',   css:'color-blue'   },
+      { name:'green',  label:'Green',  css:'color-green'  },
+      { name:'yellow', label:'Yellow', css:'color-yellow' },
+    ];
+    var FINGERS = [
+      { name:'finger1', label:'1st finger' },
+      { name:'finger2', label:'2nd finger' },
+      { name:'finger3', label:'3rd finger' },
+      { name:'finger4', label:'4th finger' },
+    ];
+    var GRID_COLS = 3, GRID_ROWS = 4, TOTAL_CIRCLES = 12, NUM_STEPS = 4;
+    var FAIL_TIME = 99;
+
+    // ── Session state ──
+    var players = [];          // ['Alice','Bob',...]
+    var turnOrder = [];        // same, shuffled
+    var currentTurnIndex = 0;
+    var roundScores = {};      // { name: seconds | FAIL_TIME }
+    var sharedBoard = null;    // same board+steps for all
+    var sharedSteps = null;
+
+    // ── Game state ──
+    var currentStep = 0;
+    var steps = [];
+    var board = [];
+    var touchedCircles = [];
+    var activeTouches = new Map();
+    var gameActive = false;
+    var holdPhaseActive = false;
+    var timerStart = 0;
+    var holdInterval = null;
+
+    // ── DOM ──
+    var boardEl      = document.getElementById('board');
+    var instrText    = document.getElementById('instruction-text');
+    var instrSub     = document.getElementById('instruction-sub');
+    var progressDots = document.getElementById('progress-dots');
+    var failOverlay  = document.getElementById('fail-overlay');
+    var failMsg      = document.getElementById('fail-message');
+    var countdownOv  = document.getElementById('countdown-overlay');
+    var countdownNum = document.getElementById('countdown-number');
+    var countdownName= document.getElementById('countdown-name');
+
+    // ── Boot ──
+    function boot() {
+      players = HG.getPlayers();
+      if (!players.length) players = ['Player 1'];
+      turnOrder = HG.shuffle(players.slice());
+      currentTurnIndex = 0;
+      roundScores = {};
+      // generate one board+steps for everyone
+      sharedBoard = generateBoard();
+      sharedSteps = generateSteps(sharedBoard);
+      showLobby();
+    }
+
+    // ── Lobby ──
+    function showLobby() {
+      showScreen('lobby-screen');
+      var name = turnOrder[currentTurnIndex];
+      document.getElementById('lobby-player-name').textContent = name;
+      document.getElementById('lobby-turn-sub').textContent =
+        'Turn ' + (currentTurnIndex + 1) + ' of ' + turnOrder.length;
+      renderStandingsMini();
+    }
+
+    function renderStandingsMini() {
+      var el = document.getElementById('standings-mini');
+      while (el.firstChild) el.removeChild(el.firstChild);
+      if (Object.keys(roundScores).length === 0) return;
+      turnOrder.forEach(function(name) {
+        var row = document.createElement('div');
+        row.className = 'standings-mini-row';
+        var nameEl = document.createElement('span');
+        nameEl.className = 'sname';
+        nameEl.textContent = name;
+        var scoreEl = document.createElement('span');
+        if (roundScores[name] !== undefined) {
+          if (roundScores[name] === FAIL_TIME) {
+            scoreEl.className = 'sscore';
+            scoreEl.textContent = 'Failed';
+            scoreEl.style.color = '#e63946';
+          } else {
+            scoreEl.className = 'sscore';
+            scoreEl.textContent = roundScores[name].toFixed(1) + 's';
+          }
+        } else {
+          scoreEl.className = 'sdone';
+          scoreEl.textContent = 'Waiting';
+        }
+        row.appendChild(nameEl);
+        row.appendChild(scoreEl);
+        el.appendChild(row);
+      });
+    }
+
+    document.getElementById('btn-go').addEventListener('click', function() {
+      startPlayerTurn();
+    });
+
+    // ── Player turn ──
+    async function startPlayerTurn() {
+      var name = turnOrder[currentTurnIndex];
+      board = sharedBoard.slice();
+      steps = sharedSteps.slice();
+      currentStep = 0;
+      touchedCircles = [];
+      activeTouches = new Map();
+      holdPhaseActive = false;
+      gameActive = false;
+
+      document.getElementById('game-player-badge').textContent = name;
+      showScreen('game-screen');
+      failOverlay.classList.remove('active');
+      renderBoard();
+
+      await doCountdown(name);
+      gameActive = true;
+      timerStart = Date.now();
+      showInstruction();
+    }
+
+    // ── Board/Steps generation ──
+    function generateBoard() {
+      var b = [];
+      for (var i = 0; i < TOTAL_CIRCLES; i++)
+        b.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
+      return b;
+    }
+
+    function generateSteps(b) {
+      var s = [];
+      var usedColors = [];
+      var usedCircles = [];
+      var shuffledColors = COLORS.slice();
+      for (var j = shuffledColors.length - 1; j > 0; j--) {
+        var r = Math.floor(Math.random() * (j+1));
+        var tmp = shuffledColors[j]; shuffledColors[j] = shuffledColors[r]; shuffledColors[r] = tmp;
+      }
+      for (var i = 0; i < NUM_STEPS; i++) {
+        var finger = FINGERS[i];
+        var color = shuffledColors[i];
+        var available = [];
+        b.forEach(function(c, idx) {
+          if (c.name === color.name && usedCircles.indexOf(idx) === -1) available.push({ color:c, idx:idx });
+        });
+        var targetIdx, targetColor;
+        if (available.length > 0) {
+          var pick = available[Math.floor(Math.random() * available.length)];
+          targetIdx = pick.idx; targetColor = color;
+        } else {
+          var any = [];
+          b.forEach(function(c, idx) {
+            if (usedCircles.indexOf(idx) === -1 && usedColors.indexOf(c.name) === -1) any.push({ color:c, idx:idx });
+          });
+          if (!any.length) b.forEach(function(c, idx) { if (usedCircles.indexOf(idx)===-1) any.push({ color:c, idx:idx }); });
+          var pick2 = any[Math.floor(Math.random() * any.length)];
+          targetIdx = pick2.idx; targetColor = pick2.color;
+        }
+        usedCircles.push(targetIdx);
+        usedColors.push(targetColor.name);
+        s.push({ finger:finger, color:targetColor, circleIndex:targetIdx });
+      }
+      return s;
+    }
+
+    // ── Render board ──
+    function renderBoard() {
+      while (boardEl.firstChild) boardEl.removeChild(boardEl.firstChild);
+      boardEl.style.gridTemplateColumns = 'repeat(' + GRID_COLS + ',1fr)';
+      boardEl.style.gridTemplateRows    = 'repeat(' + GRID_ROWS + ',1fr)';
+      boardEl.style.gap = '12px';
+      board.forEach(function(color, i) {
+        var circle = document.createElement('div');
+        circle.className = 'circle ' + color.css;
+        circle.dataset.index = i;
+        boardEl.appendChild(circle);
+      });
+    }
+
+    function getColorHex(name) {
+      switch(name) {
+        case 'red':    return '#ff6b6b';
+        case 'blue':   return '#74b9ff';
+        case 'green':  return '#55efc4';
+        case 'yellow': return '#ffeaa7';
+        default:       return '#fff';
+      }
+    }
+
+    function showInstruction() {
+      if (currentStep >= steps.length) return;
+      var step = steps[currentStep];
+      while (instrText.firstChild) instrText.removeChild(instrText.firstChild);
+      var fSpan = document.createElement('span');
+      fSpan.className = 'finger-name';
+      fSpan.textContent = step.finger.label;
+      var arrow = document.createTextNode(' → ');
+      var cSpan = document.createElement('span');
+      cSpan.style.color = getColorHex(step.color.name);
+      cSpan.textContent = step.color.label;
+      instrText.appendChild(fSpan);
+      instrText.appendChild(arrow);
+      instrText.appendChild(cSpan);
+      instrSub.textContent = 'Step ' + (currentStep+1) + ' of ' + steps.length + ' — tap the highlighted circle';
+      renderProgress();
+      highlightTarget();
+    }
+
+    function renderProgress() {
+      while (progressDots.firstChild) progressDots.removeChild(progressDots.firstChild);
+      steps.forEach(function(_, i) {
+        var dot = document.createElement('div');
+        dot.className = 'progress-dot' + (i < currentStep ? ' done' : i === currentStep ? ' current' : '');
+        progressDots.appendChild(dot);
+      });
+    }
+
+    function highlightTarget() {
+      var circles = boardEl.querySelectorAll('.circle');
+      circles.forEach(function(c, i) {
+        c.classList.remove('target','dimmed');
+        if (touchedCircles.indexOf(i) !== -1)          c.classList.add('touched');
+        else if (currentStep < steps.length && i === steps[currentStep].circleIndex) c.classList.add('target');
+        else                                             c.classList.add('dimmed');
+      });
+    }
+
+    // ── Countdown ──
+    function doCountdown(name) {
+      return new Promise(function(resolve) {
+        countdownOv.classList.add('active');
+        countdownName.textContent = name;
+        var count = 3;
+        countdownNum.textContent = count;
+        var iv = setInterval(function() {
+          count--;
+          if (count === 0) {
+            countdownNum.textContent = 'GO!';
+            countdownNum.style.animation = 'none';
+            void countdownNum.offsetWidth;
+            countdownNum.style.animation = 'count-pop 0.6s ease-out';
+          } else if (count < 0) {
+            clearInterval(iv);
+            countdownOv.classList.remove('active');
+            resolve();
+          } else {
+            countdownNum.textContent = count;
+            countdownNum.style.animation = 'none';
+            void countdownNum.offsetWidth;
+            countdownNum.style.animation = 'count-pop 0.6s ease-out';
+          }
+        }, 800);
+      });
+    }
+
+    // ── Touch handling ──
+    function getCircleFromTouch(touch) {
+      var el = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (el && el.classList.contains('circle')) return parseInt(el.dataset.index, 10);
+      return -1;
+    }
+
+    function handleTouchStart(e) {
+      e.preventDefault();
+      if (!gameActive) return;
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var touch = e.changedTouches[i];
+        var idx = getCircleFromTouch(touch);
+        if (idx === -1) continue;
+        activeTouches.set(touch.identifier, idx);
+        if (!holdPhaseActive && currentStep < steps.length && idx === steps[currentStep].circleIndex) {
+          touchedCircles.push(idx);
+          currentStep++;
+          if (currentStep >= steps.length) enterHoldPhase();
+          else showInstruction();
+        }
+      }
+    }
+
+    function handleTouchEnd(e) {
+      e.preventDefault();
+      if (!gameActive) return;
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var touch = e.changedTouches[i];
+        var idx = activeTouches.get(touch.identifier);
+        activeTouches.delete(touch.identifier);
+        if (idx !== undefined && touchedCircles.indexOf(idx) !== -1 && (holdPhaseActive || currentStep > 0)) {
+          gameFail('You lifted a finger! Keep all fingers pressed down.');
+        }
+      }
+    }
+
+    function handleTouchMove(e) {
+      e.preventDefault();
+      if (!gameActive) return;
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var touch = e.changedTouches[i];
+        var prev = activeTouches.get(touch.identifier);
+        var next = getCircleFromTouch(touch);
+        if (prev !== next) {
+          activeTouches.set(touch.identifier, next);
+          if (prev !== undefined && touchedCircles.indexOf(prev) !== -1) {
+            var still = false;
+            activeTouches.forEach(function(c, tid) { if (tid !== touch.identifier && c === prev) still = true; });
+            if (!still) gameFail('You moved off a circle! Hold steady.');
+          }
+        }
+      }
+    }
+
+    // ── Hold phase ──
+    function enterHoldPhase() {
+      holdPhaseActive = true;
+      while (instrText.firstChild) instrText.removeChild(instrText.firstChild);
+      instrText.textContent = 'Hold steady!';
+      instrSub.textContent = 'Keep all fingers down for 2 seconds...';
+      renderProgress();
+      var countdown = 2;
+      holdInterval = setInterval(function() {
+        countdown--;
+        if (!gameActive) { clearInterval(holdInterval); return; }
+        if (countdown <= 0) {
+          clearInterval(holdInterval);
+          gameWin();
+        } else {
+          instrSub.textContent = 'Keep all fingers down for ' + countdown + ' second' + (countdown>1?'s':'') + '...';
+        }
+      }, 1000);
+    }
+
+    // ── Game outcomes ──
+    function gameFail(message) {
+      gameActive = false;
+      holdPhaseActive = false;
+      if (holdInterval) clearInterval(holdInterval);
+      failMsg.textContent = message;
+      failOverlay.classList.add('active');
+    }
+
+    function gameWin() {
+      gameActive = false;
+      holdPhaseActive = false;
+      var elapsed = ((Date.now() - timerStart) / 1000);
+      recordTurnResult(elapsed);
+    }
+
+    document.getElementById('btn-retry').addEventListener('click', function() {
+      failOverlay.classList.remove('active');
+      startPlayerTurn();
+    });
+
+    document.getElementById('btn-skip').addEventListener('click', function() {
+      failOverlay.classList.remove('active');
+      recordTurnResult(FAIL_TIME);
+    });
+
+    function recordTurnResult(seconds) {
+      var name = turnOrder[currentTurnIndex];
+      roundScores[name] = seconds;
+      currentTurnIndex++;
+
+      if (currentTurnIndex >= turnOrder.length) {
+        showRoundResults();
+      } else {
+        showLobby();
+      }
+    }
+
+    // ── Results ──
+    function showRoundResults() {
+      showScreen('results-screen');
+      document.getElementById('results-sub').textContent = 'All players done!';
+
+      // Sort by time ascending (FAIL_TIME = last)
+      var sorted = Object.keys(roundScores).sort(function(a, b) {
+        return roundScores[a] - roundScores[b];
+      });
+
+      var list = document.getElementById('results-list');
+      while (list.firstChild) list.removeChild(list.firstChild);
+
+      var ranks = ['🥇','🥈','🥉'];
+      sorted.forEach(function(name, i) {
+        var row = document.createElement('div');
+        row.className = 'result-row' + (i === 0 ? ' first' : '') + (roundScores[name] === FAIL_TIME ? ' fail-row' : '');
+        var rankEl = document.createElement('div'); rankEl.className = 'result-rank'; rankEl.textContent = ranks[i] || (i+1)+'';
+        var nameEl = document.createElement('div'); nameEl.className = 'result-name'; nameEl.textContent = name;
+        var timeEl = document.createElement('div'); timeEl.className = 'result-time';
+        timeEl.textContent = roundScores[name] === FAIL_TIME ? 'Failed' : roundScores[name].toFixed(1) + 's';
+        row.appendChild(rankEl); row.appendChild(nameEl); row.appendChild(timeEl);
+        list.appendChild(row);
+      });
+
+      if (sorted.length > 0 && roundScores[sorted[0]] !== FAIL_TIME) {
+        spawnConfetti('confetti-round');
+      }
+
+      document.getElementById('btn-next-player').style.display = 'none';
+      document.getElementById('btn-see-lb').textContent = 'Done';
+    }
+
+    document.getElementById('btn-see-lb').addEventListener('click', showLeaderboard);
+    document.getElementById('btn-next-player').addEventListener('click', function() {
+      showLobby();
+    });
+
+    // ── Leaderboard ──
+    function showLeaderboard() {
+      showScreen('leaderboard-screen');
+      var sorted = Object.keys(roundScores).sort(function(a,b) { return roundScores[a]-roundScores[b]; });
+      var rows = document.getElementById('lb-rows');
+      while (rows.firstChild) rows.removeChild(rows.firstChild);
+      var medals = ['🥇','🥈','🥉'];
+      sorted.forEach(function(name, i) {
+        var row = document.createElement('div');
+        row.className = 'lb-row' + (i===0 ? ' lb-first' : '');
+        var rk = document.createElement('div'); rk.className = 'lb-rank'; rk.textContent = medals[i] || (i+1)+'';
+        var nm = document.createElement('div'); nm.className = 'lb-name'; nm.textContent = name;
+        var sc = document.createElement('div'); sc.className = 'lb-score';
+        sc.textContent = roundScores[name] === FAIL_TIME ? 'Failed' : roundScores[name].toFixed(1)+'s';
+        row.appendChild(rk); row.appendChild(nm); row.appendChild(sc);
+        rows.appendChild(row);
+      });
+      spawnConfetti('confetti-lb');
+    }
+
+    document.getElementById('btn-play-again').addEventListener('click', function() {
+      currentTurnIndex = 0;
+      roundScores = {};
+      turnOrder = HG.shuffle(players.slice());
+      sharedBoard = generateBoard();
+      sharedSteps = generateSteps(sharedBoard);
+      showLobby();
+    });
+
+    // ── Touch listeners ──
+    boardEl.addEventListener('touchstart',  handleTouchStart,  { passive:false });
+    boardEl.addEventListener('touchend',    handleTouchEnd,    { passive:false });
+    boardEl.addEventListener('touchcancel', handleTouchEnd,    { passive:false });
+    boardEl.addEventListener('touchmove',   handleTouchMove,   { passive:false });
+    document.addEventListener('touchmove',  function(e){e.preventDefault();}, { passive:false });
+
+    // ── Confetti ──
+    function spawnConfetti(containerId) {
+      var c = document.getElementById(containerId);
+      while (c.firstChild) c.removeChild(c.firstChild);
+      var cols = ['#e63946','#457b9d','#2a9d8f','#e9c46a','#ff6b6b','#74b9ff','#55efc4','#ffeaa7'];
+      for (var i = 0; i < 60; i++) {
+        var p = document.createElement('div');
+        p.className = 'confetti-piece';
+        p.style.left = Math.random()*100+'%';
+        p.style.backgroundColor = cols[Math.floor(Math.random()*cols.length)];
+        p.style.animationDuration = (1.5+Math.random()*2)+'s';
+        p.style.animationDelay = Math.random()*0.8+'s';
+        p.style.width  = (6+Math.random()*8)+'px';
+        p.style.height = (6+Math.random()*8)+'px';
+        p.style.borderRadius = Math.random()>0.5?'50%':'2px';
+        c.appendChild(p);
+      }
+    }
+
+    // ── Screen helper ──
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+      document.getElementById(id).classList.add('active');
+    }
+
+    function goBack() { window.location.href = 'index.html'; }
+
+    // ── Start ──
+    boot();
+  </script>
+</body>
+</html>

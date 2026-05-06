@@ -3,829 +3,476 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-  <title>Twister — Finger Edition</title>
+  <title>Hasbro — Family Game Time</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-    }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
 
     html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: #1a1a2e;
-      color: #fff;
+      width:100%; height:100%; overflow:hidden;
+      font-family: 'Fredoka', 'Arial Rounded MT Bold', Arial, sans-serif;
+      background-color: #1565C0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.22) 3px, transparent 3px);
+      background-size: 28px 28px;
+      color:#fff;
       touch-action: none;
     }
 
-    /* ── Screens ── */
-    .screen {
-      display: none;
-      position: absolute;
-      inset: 0;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    /* ── Scrollable wrapper ── */
+    .page {
+      display:none;
+      position:absolute;
+      inset:0;
+      overflow-y:auto;
+      overflow-x:hidden;
+      -webkit-overflow-scrolling:touch;
     }
-    .screen.active {
-      display: flex;
-    }
+    .page.active { display:block; }
 
-    /* ── Desktop Screen ── */
+    /* ── Desktop screen ── */
     #desktop-screen {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      gap: 32px;
-      padding: 40px;
-      text-align: center;
+      display:none;
+      position:absolute;
+      inset:0;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:28px;
+      text-align:center;
+      padding:40px;
     }
-    #desktop-screen .logo {
-      width: 220px;
-      height: auto;
+    #desktop-screen.active { display:flex; }
+    .qr-wrap {
+      background:#fff;
+      border-radius:20px;
+      padding:16px;
+      width:200px; height:200px;
+      display:flex; align-items:center; justify-content:center;
     }
-    #desktop-screen p {
-      font-size: 18px;
-      color: #a0a0c0;
-      max-width: 400px;
-      line-height: 1.5;
+    .qr-wrap svg { width:100%; height:100%; }
+    #desktop-screen p { color:rgba(255,255,255,0.8); font-size:16px; line-height:1.5; max-width:340px; }
+
+    /* ── Setup screen ── */
+    #setup-screen {
+      padding: 40px 24px 40px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      min-height:100%;
     }
-    .qr-container {
-      width: 220px;
-      height: 220px;
-      background: #fff;
-      border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
+    .setup-hasbro { width:80px; margin-bottom:16px; }
+    .setup-title {
+      font-size:32px;
+      font-weight:700;
+      color:#FFD700;
+      -webkit-text-stroke:2px #1a1a1a;
+      text-align:center;
+      margin-bottom:6px;
+      line-height:1.1;
     }
-    .qr-container svg {
-      width: 100%;
-      height: 100%;
+    .setup-sub {
+      font-size:15px;
+      color:rgba(255,255,255,0.8);
+      margin-bottom:28px;
+      text-align:center;
+    }
+    .players-list {
+      width:100%;
+      max-width:360px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin-bottom:20px;
+    }
+    .player-row {
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .player-num {
+      width:34px; height:34px;
+      background:rgba(255,255,255,0.2);
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:16px;
+      flex-shrink:0;
+    }
+    .player-input {
+      flex:1;
+      background:rgba(255,255,255,0.15);
+      border:2px solid rgba(255,255,255,0.3);
+      border-radius:50px;
+      padding:12px 18px;
+      font-size:16px;
+      font-family:inherit;
+      color:#fff;
+      outline:none;
+    }
+    .player-input::placeholder { color:rgba(255,255,255,0.5); }
+    .player-input:focus { border-color:rgba(255,255,255,0.8); background:rgba(255,255,255,0.25); }
+    .btn-remove {
+      width:34px; height:34px;
+      background:rgba(230,57,70,0.7);
+      border:none; border-radius:50%;
+      color:#fff; font-size:20px; line-height:1;
+      cursor:pointer;
+      flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .btn-add {
+      width:100%; max-width:360px;
+      padding:13px;
+      background:rgba(255,255,255,0.15);
+      border:2px dashed rgba(255,255,255,0.4);
+      border-radius:50px;
+      color:#fff; font-size:16px; font-family:inherit;
+      cursor:pointer;
+      margin-bottom:24px;
+    }
+    .btn-start {
+      width:100%; max-width:360px;
+      padding:18px;
+      background:linear-gradient(135deg, #E53935, #B71C1C);
+      border:none; border-radius:50px;
+      color:#fff; font-size:20px; font-weight:700;
+      font-family:inherit; text-transform:uppercase;
+      letter-spacing:1px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.3);
+      cursor:pointer;
+    }
+    .btn-start:disabled {
+      background:rgba(255,255,255,0.2);
+      box-shadow:none;
+      color:rgba(255,255,255,0.4);
     }
 
-    /* ── Home Screen ── */
-    #home-screen {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      gap: 24px;
-      padding: 40px 24px;
-      text-align: center;
+    /* ── Game select ── */
+    #games-screen {
+      padding: 24px 16px 32px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      min-height:100%;
     }
-    #home-screen .logo {
-      width: 180px;
-      height: auto;
+    .top-bar {
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:12px;
     }
-    .home-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #e9c46a;
-      text-transform: uppercase;
-      letter-spacing: 3px;
+    .hasbro-logo { height:52px; }
+    .btn-players {
+      background:rgba(255,255,255,0.2);
+      border:2px solid rgba(255,255,255,0.4);
+      border-radius:50px;
+      padding:8px 16px;
+      color:#fff; font-size:13px; font-family:inherit;
+      cursor:pointer;
     }
-    #home-screen .subtitle {
-      font-size: 16px;
-      color: #a0a0c0;
-      line-height: 1.5;
-      max-width: 300px;
+    .hero-title {
+      font-size:38px;
+      font-weight:700;
+      color:#FFD700;
+      -webkit-text-stroke:2.5px #1a1a1a;
+      text-align:center;
+      line-height:1;
+      margin-bottom:4px;
+      text-transform:uppercase;
     }
-    .color-preview {
-      display: flex;
-      gap: 12px;
-      margin: 8px 0;
+    .hero-sub {
+      font-size:14px;
+      color:rgba(255,255,255,0.75);
+      margin-bottom:20px;
+      text-align:center;
     }
-    .color-preview span {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 3px solid rgba(255,255,255,0.2);
+    .players-chips {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      justify-content:center;
+      margin-bottom:24px;
     }
-    .btn {
-      padding: 16px 48px;
-      border: none;
-      border-radius: 50px;
-      font-size: 18px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .btn:active {
-      transform: scale(0.95);
-    }
-    .btn-play {
-      background: linear-gradient(135deg, #e63946, #d62839);
-      color: #fff;
-      box-shadow: 0 6px 24px rgba(230, 57, 70, 0.4);
-      margin-top: 12px;
-    }
-    .btn-secondary {
-      background: rgba(255,255,255,0.1);
-      color: #fff;
-      border: 2px solid rgba(255,255,255,0.2);
-      font-size: 14px;
-      padding: 12px 32px;
+    .chip {
+      background:rgba(255,255,255,0.2);
+      border:2px solid rgba(255,255,255,0.35);
+      border-radius:50px;
+      padding:6px 14px;
+      font-size:14px;
+      font-weight:600;
     }
 
-    /* ── Game Screen ── */
-    #game-screen {
-      background: #111122;
-      flex-direction: column;
+    .games-grid {
+      width:100%;
+      max-width:420px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      margin-bottom:14px;
+    }
+    .game-card {
+      border-radius:20px;
+      overflow:hidden;
+      cursor:pointer;
+      position:relative;
+      aspect-ratio:3/2;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:transform 0.15s;
+      box-shadow:0 6px 20px rgba(0,0,0,0.35);
+    }
+    .game-card:active { transform:scale(0.95); }
+    .game-card img {
+      max-width:80%;
+      max-height:65%;
+      object-fit:contain;
+      filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    }
+    .game-card .card-label {
+      position:absolute;
+      bottom:8px;
+      left:0; right:0;
+      text-align:center;
+      font-size:11px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:1px;
+      opacity:0.8;
+    }
+    .game-card.coming-soon { opacity:0.5; cursor:default; }
+    .game-card.coming-soon::after {
+      content:'COMING SOON';
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,0.45);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:1px;
+      border-radius:20px;
     }
 
-    .game-header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 20;
-      padding: 16px 16px 12px;
-      background: linear-gradient(to bottom, rgba(17,17,34,0.95) 0%, rgba(17,17,34,0) 100%);
-      pointer-events: none;
-    }
-    .instruction-bar {
-      background: rgba(255,255,255,0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      padding: 14px 20px;
-      text-align: center;
-      pointer-events: auto;
-    }
-    .instruction-text {
-      font-size: 20px;
-      font-weight: 700;
-      line-height: 1.4;
-    }
-    .instruction-sub {
-      font-size: 13px;
-      color: #a0a0c0;
-      margin-top: 4px;
-    }
-    .finger-name {
-      text-transform: uppercase;
-      font-weight: 800;
+    /* card backgrounds */
+    .card-twister  { background:linear-gradient(135deg,#e63946,#c1121f); }
+    .card-connect4 { background:linear-gradient(135deg,#1a1a1a,#3a3a3a); }
+    .card-cluedo   { background:linear-gradient(135deg,#6a0dad,#4a148c); }
+    .card-operation{ background:linear-gradient(135deg,#e65100,#bf360c); }
+    .card-monopoly { background:linear-gradient(135deg,#c62828,#e65100); }
+
+    /* game-card spanning full width (Twister = featured) */
+    .game-card-wide {
+      grid-column: span 2;
+      aspect-ratio:16/7;
     }
 
-    .progress-dots {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .progress-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      transition: background 0.3s, transform 0.3s;
-    }
-    .progress-dot.done {
-      background: #2a9d8f;
-      transform: scale(1.2);
-    }
-    .progress-dot.current {
-      background: #e9c46a;
-      transform: scale(1.3);
-      animation: pulse-dot 1s ease-in-out infinite;
-    }
-
-    @keyframes pulse-dot {
-      0%, 100% { transform: scale(1.3); }
-      50% { transform: scale(1.6); }
-    }
-
-    /* ── Board ── */
-    .board {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      padding: 120px 20px 20px;
-      place-items: center;
-    }
-    .circle {
-      border-radius: 50%;
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      max-width: 100px;
-      max-height: 100px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
-      position: relative;
-    }
-    .circle.target {
-      animation: pulse-target 1.2s ease-in-out infinite;
-      z-index: 10;
-    }
-    @keyframes pulse-target {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.3); }
-      50% { box-shadow: 0 0 0 12px rgba(255,255,255,0); }
-    }
-    .circle.touched {
-      transform: scale(0.9);
-      opacity: 0.7;
-    }
-    .circle.dimmed {
-      opacity: 0.3;
-    }
-
-    .color-red { background: radial-gradient(circle at 35% 35%, #ff6b6b, #e63946); }
-    .color-blue { background: radial-gradient(circle at 35% 35%, #74b9ff, #457b9d); }
-    .color-green { background: radial-gradient(circle at 35% 35%, #55efc4, #2a9d8f); }
-    .color-yellow { background: radial-gradient(circle at 35% 35%, #ffeaa7, #e9c46a); }
-
-    /* ── Fail Overlay ── */
-    #fail-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 50;
-      background: rgba(230, 57, 70, 0.92);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      text-align: center;
-      padding: 40px;
-    }
-    #fail-overlay.active {
-      display: flex;
-    }
-    #fail-overlay h2 {
-      font-size: 28px;
-      font-weight: 800;
-    }
-    #fail-overlay p {
-      font-size: 16px;
-      opacity: 0.85;
-      line-height: 1.5;
-    }
-    .btn-retry {
-      background: #fff;
-      color: #e63946;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-    }
-
-    /* ── Win Screen ── */
-    #win-screen {
-      background: linear-gradient(135deg, #1a3a2e 0%, #16213e 100%);
-      gap: 24px;
-      padding: 40px 24px;
-      text-align: center;
-    }
-    #win-screen h2 {
-      font-size: 32px;
-      font-weight: 800;
-      color: #55efc4;
-    }
-    #win-screen p {
-      font-size: 16px;
-      color: #a0a0c0;
-      line-height: 1.5;
-    }
-    .btn-new-game {
-      background: linear-gradient(135deg, #2a9d8f, #1a8a7a);
-      color: #fff;
-      box-shadow: 0 6px 24px rgba(42, 157, 143, 0.4);
-    }
-
-    /* ── Countdown ── */
-    .countdown-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 40;
-      background: rgba(17,17,34,0.85);
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
-    .countdown-overlay.active {
-      display: flex;
-    }
-    .countdown-number {
-      font-size: 120px;
-      font-weight: 900;
-      animation: count-pop 0.6s ease-out;
-    }
-    @keyframes count-pop {
-      0% { transform: scale(2); opacity: 0; }
-      60% { transform: scale(0.9); opacity: 1; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    /* ── Confetti ── */
-    .confetti-container {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden;
-      z-index: 5;
-    }
-    .confetti-piece {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      top: -20px;
-      animation: confetti-fall linear forwards;
-    }
-    @keyframes confetti-fall {
-      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    .operation-text {
+      font-size:28px;
+      font-weight:700;
+      color:#fff;
+      text-shadow:0 2px 8px rgba(0,0,0,0.5);
+      letter-spacing:1px;
     }
   </style>
 </head>
 <body>
 
-  <!-- Desktop: QR Code Screen -->
-  <div id="desktop-screen" class="screen">
-    <img src="Sources/e8d2632aea80df26cb4968461f1e3ac6.webp" alt="Twister" class="logo">
-    <p>Finger Edition</p>
-    <p>This game is designed for mobile. Scan the QR code to play on your phone!</p>
-    <div class="qr-container">
-      <svg viewBox="0 0 26.4 26.4" xmlns="http://www.w3.org/2000/svg"><path d="M1.6,1.6H2.4V2.4H1.6zM2.4,1.6H3.2V2.4H2.4zM3.2,1.6H4V2.4H3.2zM4,1.6H4.8V2.4H4zM4.8,1.6H5.6V2.4H4.8zM5.6,1.6H6.4V2.4H5.6zM6.4,1.6H7.2V2.4H6.4zM10.4,1.6H11.2V2.4H10.4zM12.8,1.6H13.6V2.4H12.8zM16,1.6H16.8V2.4H16zM16.8,1.6H17.6V2.4H16.8zM19.2,1.6H20V2.4H19.2zM20,1.6H20.8V2.4H20zM20.8,1.6H21.6V2.4H20.8zM21.6,1.6H22.4V2.4H21.6zM22.4,1.6H23.2V2.4H22.4zM23.2,1.6H24V2.4H23.2zM24,1.6H24.8V2.4H24zM1.6,2.4H2.4V3.2H1.6zM6.4,2.4H7.2V3.2H6.4zM8,2.4H8.8V3.2H8zM8.8,2.4H9.6V3.2H8.8zM11.2,2.4H12V3.2H11.2zM12,2.4H12.8V3.2H12zM16.8,2.4H17.6V3.2H16.8zM19.2,2.4H20V3.2H19.2zM24,2.4H24.8V3.2H24zM1.6,3.2H2.4V4H1.6zM3.2,3.2H4V4H3.2zM4,3.2H4.8V4H4zM4.8,3.2H5.6V4H4.8zM6.4,3.2H7.2V4H6.4zM10.4,3.2H11.2V4H10.4zM11.2,3.2H12V4H11.2zM13.6,3.2H14.4V4H13.6zM16.8,3.2H17.6V4H16.8zM17.6,3.2H18.4V4H17.6zM19.2,3.2H20V4H19.2zM20.8,3.2H21.6V4H20.8zM21.6,3.2H22.4V4H21.6zM22.4,3.2H23.2V4H22.4zM24,3.2H24.8V4H24zM1.6,4H2.4V4.8H1.6zM3.2,4H4V4.8H3.2zM4,4H4.8V4.8H4zM4.8,4H5.6V4.8H4.8zM6.4,4H7.2V4.8H6.4zM9.6,4H10.4V4.8H9.6zM12,4H12.8V4.8H12zM14.4,4H15.2V4.8H14.4zM16,4H16.8V4.8H16zM16.8,4H17.6V4.8H16.8zM17.6,4H18.4V4.8H17.6zM19.2,4H20V4.8H19.2zM20.8,4H21.6V4.8H20.8zM21.6,4H22.4V4.8H21.6zM22.4,4H23.2V4.8H22.4zM24,4H24.8V4.8H24zM1.6,4.8H2.4V5.6H1.6zM3.2,4.8H4V5.6H3.2zM4,4.8H4.8V5.6H4zM4.8,4.8H5.6V5.6H4.8zM6.4,4.8H7.2V5.6H6.4zM8,4.8H8.8V5.6H8zM8.8,4.8H9.6V5.6H8.8zM10.4,4.8H11.2V5.6H10.4zM12,4.8H12.8V5.6H12zM14.4,4.8H15.2V5.6H14.4zM16,4.8H16.8V5.6H16zM16.8,4.8H17.6V5.6H16.8zM19.2,4.8H20V5.6H19.2zM20.8,4.8H21.6V5.6H20.8zM21.6,4.8H22.4V5.6H21.6zM22.4,4.8H23.2V5.6H22.4zM24,4.8H24.8V5.6H24zM1.6,5.6H2.4V6.4H1.6zM6.4,5.6H7.2V6.4H6.4zM8.8,5.6H9.6V6.4H8.8zM9.6,5.6H10.4V6.4H9.6zM10.4,5.6H11.2V6.4H10.4zM11.2,5.6H12V6.4H11.2zM12.8,5.6H13.6V6.4H12.8zM13.6,5.6H14.4V6.4H13.6zM14.4,5.6H15.2V6.4H14.4zM15.2,5.6H16V6.4H15.2zM16,5.6H16.8V6.4H16zM16.8,5.6H17.6V6.4H16.8zM17.6,5.6H18.4V6.4H17.6zM19.2,5.6H20V6.4H19.2zM24,5.6H24.8V6.4H24zM1.6,6.4H2.4V7.2H1.6zM2.4,6.4H3.2V7.2H2.4zM3.2,6.4H4V7.2H3.2zM4,6.4H4.8V7.2H4zM4.8,6.4H5.6V7.2H4.8zM5.6,6.4H6.4V7.2H5.6zM6.4,6.4H7.2V7.2H6.4zM8,6.4H8.8V7.2H8zM9.6,6.4H10.4V7.2H9.6zM11.2,6.4H12V7.2H11.2zM12.8,6.4H13.6V7.2H12.8zM14.4,6.4H15.2V7.2H14.4zM16,6.4H16.8V7.2H16zM17.6,6.4H18.4V7.2H17.6zM19.2,6.4H20V7.2H19.2zM20,6.4H20.8V7.2H20zM20.8,6.4H21.6V7.2H20.8zM21.6,6.4H22.4V7.2H21.6zM22.4,6.4H23.2V7.2H22.4zM23.2,6.4H24V7.2H23.2zM24,6.4H24.8V7.2H24zM10.4,7.2H11.2V8H10.4zM13.6,7.2H14.4V8H13.6zM15.2,7.2H16V8H15.2zM16,7.2H16.8V8H16zM16.8,7.2H17.6V8H16.8zM17.6,7.2H18.4V8H17.6zM1.6,8H2.4V8.8H1.6zM3.2,8H4V8.8H3.2zM4.8,8H5.6V8.8H4.8zM6.4,8H7.2V8.8H6.4zM10.4,8H11.2V8.8H10.4zM11.2,8H12V8.8H11.2zM14.4,8H15.2V8.8H14.4zM15.2,8H16V8.8H15.2zM17.6,8H18.4V8.8H17.6zM20.8,8H21.6V8.8H20.8zM23.2,8H24V8.8H23.2zM4,8.8H4.8V9.6H4zM4.8,8.8H5.6V9.6H4.8zM7.2,8.8H8V9.6H7.2zM9.6,8.8H10.4V9.6H9.6zM10.4,8.8H11.2V9.6H10.4zM11.2,8.8H12V9.6H11.2zM12,8.8H12.8V9.6H12zM13.6,8.8H14.4V9.6H13.6zM14.4,8.8H15.2V9.6H14.4zM17.6,8.8H18.4V9.6H17.6zM19.2,8.8H20V9.6H19.2zM21.6,8.8H22.4V9.6H21.6zM24,8.8H24.8V9.6H24zM1.6,9.6H2.4V10.4H1.6zM4,9.6H4.8V10.4H4zM6.4,9.6H7.2V10.4H6.4zM8,9.6H8.8V10.4H8zM8.8,9.6H9.6V10.4H8.8zM10.4,9.6H11.2V10.4H10.4zM11.2,9.6H12V10.4H11.2zM12.8,9.6H13.6V10.4H12.8zM13.6,9.6H14.4V10.4H13.6zM14.4,9.6H15.2V10.4H14.4zM17.6,9.6H18.4V10.4H17.6zM19.2,9.6H20V10.4H19.2zM20,9.6H20.8V10.4H20zM20.8,9.6H21.6V10.4H20.8zM22.4,9.6H23.2V10.4H22.4zM23.2,9.6H24V10.4H23.2zM24,9.6H24.8V10.4H24zM2.4,10.4H3.2V11.2H2.4zM3.2,10.4H4V11.2H3.2zM4,10.4H4.8V11.2H4zM8,10.4H8.8V11.2H8zM11.2,10.4H12V11.2H11.2zM12,10.4H12.8V11.2H12zM12.8,10.4H13.6V11.2H12.8zM14.4,10.4H15.2V11.2H14.4zM15.2,10.4H16V11.2H15.2zM17.6,10.4H18.4V11.2H17.6zM19.2,10.4H20V11.2H19.2zM20,10.4H20.8V11.2H20zM23.2,10.4H24V11.2H23.2zM1.6,11.2H2.4V12H1.6zM2.4,11.2H3.2V12H2.4zM3.2,11.2H4V12H3.2zM4,11.2H4.8V12H4zM4.8,11.2H5.6V12H4.8zM6.4,11.2H7.2V12H6.4zM7.2,11.2H8V12H7.2zM8,11.2H8.8V12H8zM8.8,11.2H9.6V12H8.8zM10.4,11.2H11.2V12H10.4zM12.8,11.2H13.6V12H12.8zM13.6,11.2H14.4V12H13.6zM15.2,11.2H16V12H15.2zM16,11.2H16.8V12H16zM19.2,11.2H20V12H19.2zM21.6,11.2H22.4V12H21.6zM23.2,11.2H24V12H23.2zM24,11.2H24.8V12H24zM2.4,12H3.2V12.8H2.4zM7.2,12H8V12.8H7.2zM8,12H8.8V12.8H8zM8.8,12H9.6V12.8H8.8zM9.6,12H10.4V12.8H9.6zM10.4,12H11.2V12.8H10.4zM11.2,12H12V12.8H11.2zM12.8,12H13.6V12.8H12.8zM13.6,12H14.4V12.8H13.6zM17.6,12H18.4V12.8H17.6zM18.4,12H19.2V12.8H18.4zM19.2,12H20V12.8H19.2zM21.6,12H22.4V12.8H21.6zM24,12H24.8V12.8H24zM3.2,12.8H4V13.6H3.2zM4,12.8H4.8V13.6H4zM4.8,12.8H5.6V13.6H4.8zM5.6,12.8H6.4V13.6H5.6zM6.4,12.8H7.2V13.6H6.4zM9.6,12.8H10.4V13.6H9.6zM12,12.8H12.8V13.6H12zM15.2,12.8H16V13.6H15.2zM17.6,12.8H18.4V13.6H17.6zM18.4,12.8H19.2V13.6H18.4zM21.6,12.8H22.4V13.6H21.6zM23.2,12.8H24V13.6H23.2zM24,12.8H24.8V13.6H24zM1.6,13.6H2.4V14.4H1.6zM4.8,13.6H5.6V14.4H4.8zM7.2,13.6H8V14.4H7.2zM8.8,13.6H9.6V14.4H8.8zM11.2,13.6H12V14.4H11.2zM13.6,13.6H14.4V14.4H13.6zM15.2,13.6H16V14.4H15.2zM17.6,13.6H18.4V14.4H17.6zM21.6,13.6H22.4V14.4H21.6zM23.2,13.6H24V14.4H23.2zM1.6,14.4H2.4V15.2H1.6zM3.2,14.4H4V15.2H3.2zM4,14.4H4.8V15.2H4zM5.6,14.4H6.4V15.2H5.6zM6.4,14.4H7.2V15.2H6.4zM8.8,14.4H9.6V15.2H8.8zM9.6,14.4H10.4V15.2H9.6zM14.4,14.4H15.2V15.2H14.4zM15.2,14.4H16V15.2H15.2zM16.8,14.4H17.6V15.2H16.8zM17.6,14.4H18.4V15.2H17.6zM18.4,14.4H19.2V15.2H18.4zM19.2,14.4H20V15.2H19.2zM20,14.4H20.8V15.2H20zM21.6,14.4H22.4V15.2H21.6zM23.2,14.4H24V15.2H23.2zM24,14.4H24.8V15.2H24zM2.4,15.2H3.2V16H2.4zM3.2,15.2H4V16H3.2zM4,15.2H4.8V16H4zM4.8,15.2H5.6V16H4.8zM9.6,15.2H10.4V16H9.6zM11.2,15.2H12V16H11.2zM12,15.2H12.8V16H12zM13.6,15.2H14.4V16H13.6zM14.4,15.2H15.2V16H14.4zM15.2,15.2H16V16H15.2zM19.2,15.2H20V16H19.2zM21.6,15.2H22.4V16H21.6zM22.4,15.2H23.2V16H22.4zM24,15.2H24.8V16H24zM1.6,16H2.4V16.8H1.6zM3.2,16H4V16.8H3.2zM6.4,16H7.2V16.8H6.4zM7.2,16H8V16.8H7.2zM12.8,16H13.6V16.8H12.8zM13.6,16H14.4V16.8H13.6zM14.4,16H15.2V16.8H14.4zM16,16H16.8V16.8H16zM17.6,16H18.4V16.8H17.6zM18.4,16H19.2V16.8H18.4zM19.2,16H20V16.8H19.2zM20,16H20.8V16.8H20zM20.8,16H21.6V16.8H20.8zM23.2,16H24V16.8H23.2zM24,16H24.8V16.8H24zM2.4,16.8H3.2V17.6H2.4zM3.2,16.8H4V17.6H3.2zM4,16.8H4.8V17.6H4zM4.8,16.8H5.6V17.6H4.8zM7.2,16.8H8V17.6H7.2zM8,16.8H8.8V17.6H8zM11.2,16.8H12V17.6H11.2zM12,16.8H12.8V17.6H12zM12.8,16.8H13.6V17.6H12.8zM14.4,16.8H15.2V17.6H14.4zM15.2,16.8H16V17.6H15.2zM16,16.8H16.8V17.6H16zM16.8,16.8H17.6V17.6H16.8zM17.6,16.8H18.4V17.6H17.6zM18.4,16.8H19.2V17.6H18.4zM20,16.8H20.8V17.6H20zM21.6,16.8H22.4V17.6H21.6zM23.2,16.8H24V17.6H23.2zM1.6,17.6H2.4V18.4H1.6zM3.2,17.6H4V18.4H3.2zM4,17.6H4.8V18.4H4zM5.6,17.6H6.4V18.4H5.6zM6.4,17.6H7.2V18.4H6.4zM8,17.6H8.8V18.4H8zM8.8,17.6H9.6V18.4H8.8zM10.4,17.6H11.2V18.4H10.4zM12.8,17.6H13.6V18.4H12.8zM13.6,17.6H14.4V18.4H13.6zM15.2,17.6H16V18.4H15.2zM17.6,17.6H18.4V18.4H17.6zM18.4,17.6H19.2V18.4H18.4zM19.2,17.6H20V18.4H19.2zM20,17.6H20.8V18.4H20zM20.8,17.6H21.6V18.4H20.8zM8,18.4H8.8V19.2H8zM9.6,18.4H10.4V19.2H9.6zM10.4,18.4H11.2V19.2H10.4zM11.2,18.4H12V19.2H11.2zM12.8,18.4H13.6V19.2H12.8zM13.6,18.4H14.4V19.2H13.6zM15.2,18.4H16V19.2H15.2zM16,18.4H16.8V19.2H16zM17.6,18.4H18.4V19.2H17.6zM20.8,18.4H21.6V19.2H20.8zM22.4,18.4H23.2V19.2H22.4zM23.2,18.4H24V19.2H23.2zM24,18.4H24.8V19.2H24zM1.6,19.2H2.4V20H1.6zM2.4,19.2H3.2V20H2.4zM3.2,19.2H4V20H3.2zM4,19.2H4.8V20H4zM4.8,19.2H5.6V20H4.8zM5.6,19.2H6.4V20H5.6zM6.4,19.2H7.2V20H6.4zM12,19.2H12.8V20H12zM16,19.2H16.8V20H16zM16.8,19.2H17.6V20H16.8zM17.6,19.2H18.4V20H17.6zM19.2,19.2H20V20H19.2zM20.8,19.2H21.6V20H20.8zM21.6,19.2H22.4V20H21.6zM23.2,19.2H24V20H23.2zM24,19.2H24.8V20H24zM1.6,20H2.4V20.8H1.6zM6.4,20H7.2V20.8H6.4zM8.8,20H9.6V20.8H8.8zM11.2,20H12V20.8H11.2zM13.6,20H14.4V20.8H13.6zM15.2,20H16V20.8H15.2zM17.6,20H18.4V20.8H17.6zM20.8,20H21.6V20.8H20.8zM21.6,20H22.4V20.8H21.6zM1.6,20.8H2.4V21.6H1.6zM3.2,20.8H4V21.6H3.2zM4,20.8H4.8V21.6H4zM4.8,20.8H5.6V21.6H4.8zM6.4,20.8H7.2V21.6H6.4zM8,20.8H8.8V21.6H8zM8.8,20.8H9.6V21.6H8.8zM14.4,20.8H15.2V21.6H14.4zM15.2,20.8H16V21.6H15.2zM17.6,20.8H18.4V21.6H17.6zM18.4,20.8H19.2V21.6H18.4zM19.2,20.8H20V21.6H19.2zM20,20.8H20.8V21.6H20zM20.8,20.8H21.6V21.6H20.8zM23.2,20.8H24V21.6H23.2zM1.6,21.6H2.4V22.4H1.6zM3.2,21.6H4V22.4H3.2zM4,21.6H4.8V22.4H4zM4.8,21.6H5.6V22.4H4.8zM6.4,21.6H7.2V22.4H6.4zM9.6,21.6H10.4V22.4H9.6zM11.2,21.6H12V22.4H11.2zM12,21.6H12.8V22.4H12zM13.6,21.6H14.4V22.4H13.6zM14.4,21.6H15.2V22.4H14.4zM15.2,21.6H16V22.4H15.2zM16,21.6H16.8V22.4H16zM17.6,21.6H18.4V22.4H17.6zM20,21.6H20.8V22.4H20zM20.8,21.6H21.6V22.4H20.8zM22.4,21.6H23.2V22.4H22.4zM1.6,22.4H2.4V23.2H1.6zM3.2,22.4H4V23.2H3.2zM4,22.4H4.8V23.2H4zM4.8,22.4H5.6V23.2H4.8zM6.4,22.4H7.2V23.2H6.4zM8,22.4H8.8V23.2H8zM8.8,22.4H9.6V23.2H8.8zM9.6,22.4H10.4V23.2H9.6zM10.4,22.4H11.2V23.2H10.4zM13.6,22.4H14.4V23.2H13.6zM14.4,22.4H15.2V23.2H14.4zM16,22.4H16.8V23.2H16zM17.6,22.4H18.4V23.2H17.6zM20,22.4H20.8V23.2H20zM20.8,22.4H21.6V23.2H20.8zM21.6,22.4H22.4V23.2H21.6zM24,22.4H24.8V23.2H24zM1.6,23.2H2.4V24H1.6zM6.4,23.2H7.2V24H6.4zM10.4,23.2H11.2V24H10.4zM11.2,23.2H12V24H11.2zM12.8,23.2H13.6V24H12.8zM14.4,23.2H15.2V24H14.4zM15.2,23.2H16V24H15.2zM17.6,23.2H18.4V24H17.6zM20,23.2H20.8V24H20zM23.2,23.2H24V24H23.2zM1.6,24H2.4V24.8H1.6zM2.4,24H3.2V24.8H2.4zM3.2,24H4V24.8H3.2zM4,24H4.8V24.8H4zM4.8,24H5.6V24.8H4.8zM5.6,24H6.4V24.8H5.6zM6.4,24H7.2V24.8H6.4zM8,24H8.8V24.8H8zM8.8,24H9.6V24.8H8.8zM10.4,24H11.2V24.8H10.4zM11.2,24H12V24.8H11.2zM12,24H12.8V24.8H12zM12.8,24H13.6V24.8H12.8zM13.6,24H14.4V24.8H13.6zM14.4,24H15.2V24.8H14.4zM16,24H16.8V24.8H16zM16.8,24H17.6V24.8H16.8zM17.6,24H18.4V24.8H17.6zM18.4,24H19.2V24.8H18.4zM19.2,24H20V24.8H19.2zM23.2,24H24V24.8H23.2zM24,24H24.8V24.8H24z" fill="#000000"/></svg>
+  <!-- Desktop redirect -->
+  <div id="desktop-screen">
+    <img src="Sources/Hasbro_logo.svg.png" alt="Hasbro" style="width:100px;">
+    <p style="font-size:22px; font-weight:700; color:#FFD700; -webkit-text-stroke:1px #1a1a1a;">Family Game Time</p>
+    <p>Open this on your phone to play!</p>
+    <div class="qr-wrap">
+      <svg viewBox="0 0 26.4 26.4" xmlns="http://www.w3.org/2000/svg"><path d="M1.6,1.6H2.4V2.4H1.6zM2.4,1.6H3.2V2.4H2.4zM3.2,1.6H4V2.4H3.2zM4,1.6H4.8V2.4H4zM4.8,1.6H5.6V2.4H4.8zM5.6,1.6H6.4V2.4H5.6zM6.4,1.6H7.2V2.4H6.4zM10.4,1.6H11.2V2.4H10.4zM12.8,1.6H13.6V2.4H12.8zM16,1.6H16.8V2.4H16zM16.8,1.6H17.6V2.4H16.8zM19.2,1.6H20V2.4H19.2zM20,1.6H20.8V2.4H20zM20.8,1.6H21.6V2.4H20.8zM21.6,1.6H22.4V2.4H21.6zM22.4,1.6H23.2V2.4H22.4zM23.2,1.6H24V2.4H23.2zM24,1.6H24.8V2.4H24zM1.6,2.4H2.4V3.2H1.6zM6.4,2.4H7.2V3.2H6.4zM8,2.4H8.8V3.2H8zM8.8,2.4H9.6V3.2H8.8zM11.2,2.4H12V3.2H11.2zM12,2.4H12.8V3.2H12zM16.8,2.4H17.6V3.2H16.8zM19.2,2.4H20V3.2H19.2zM24,2.4H24.8V3.2H24zM1.6,3.2H2.4V4H1.6zM3.2,3.2H4V4H3.2zM4,3.2H4.8V4H4zM4.8,3.2H5.6V4H4.8zM6.4,3.2H7.2V4H6.4zM10.4,3.2H11.2V4H10.4zM11.2,3.2H12V4H11.2zM13.6,3.2H14.4V4H13.6zM16.8,3.2H17.6V4H16.8zM17.6,3.2H18.4V4H17.6zM19.2,3.2H20V4H19.2zM20.8,3.2H21.6V4H20.8zM21.6,3.2H22.4V4H21.6zM22.4,3.2H23.2V4H22.4zM24,3.2H24.8V4H24zM1.6,4H2.4V4.8H1.6zM3.2,4H4V4.8H3.2zM4,4H4.8V4.8H4zM4.8,4H5.6V4.8H4.8zM6.4,4H7.2V4.8H6.4zM9.6,4H10.4V4.8H9.6zM12,4H12.8V4.8H12zM14.4,4H15.2V4.8H14.4zM16,4H16.8V4.8H16zM16.8,4H17.6V4.8H16.8zM17.6,4H18.4V4.8H17.6zM19.2,4H20V4.8H19.2zM20.8,4H21.6V4.8H20.8zM21.6,4H22.4V4.8H21.6zM22.4,4H23.2V4.8H22.4zM24,4H24.8V4.8H24zM1.6,4.8H2.4V5.6H1.6zM3.2,4.8H4V5.6H3.2zM4,4.8H4.8V5.6H4zM4.8,4.8H5.6V5.6H4.8zM6.4,4.8H7.2V5.6H6.4zM8,4.8H8.8V5.6H8zM8.8,4.8H9.6V5.6H8.8zM10.4,4.8H11.2V5.6H10.4zM12,4.8H12.8V5.6H12zM14.4,4.8H15.2V5.6H14.4zM16,4.8H16.8V5.6H16zM16.8,4.8H17.6V5.6H16.8zM19.2,4.8H20V5.6H19.2zM20.8,4.8H21.6V5.6H20.8zM21.6,4.8H22.4V5.6H21.6zM22.4,4.8H23.2V5.6H22.4zM24,4.8H24.8V5.6H24zM1.6,5.6H2.4V6.4H1.6zM6.4,5.6H7.2V6.4H6.4zM8.8,5.6H9.6V6.4H8.8zM9.6,5.6H10.4V6.4H9.6zM10.4,5.6H11.2V6.4H10.4zM11.2,5.6H12V6.4H11.2zM12.8,5.6H13.6V6.4H12.8zM13.6,5.6H14.4V6.4H13.6zM14.4,5.6H15.2V6.4H14.4zM15.2,5.6H16V6.4H15.2zM16,5.6H16.8V6.4H16zM16.8,5.6H17.6V6.4H16.8zM17.6,5.6H18.4V6.4H17.6zM19.2,5.6H20V6.4H19.2zM24,5.6H24.8V6.4H24zM1.6,6.4H2.4V7.2H1.6zM2.4,6.4H3.2V7.2H2.4zM3.2,6.4H4V7.2H3.2zM4,6.4H4.8V7.2H4zM4.8,6.4H5.6V7.2H4.8zM5.6,6.4H6.4V7.2H5.6zM6.4,6.4H7.2V7.2H6.4zM8,6.4H8.8V7.2H8zM9.6,6.4H10.4V7.2H9.6zM11.2,6.4H12V7.2H11.2zM12.8,6.4H13.6V7.2H12.8zM14.4,6.4H15.2V7.2H14.4zM16,6.4H16.8V7.2H16zM17.6,6.4H18.4V7.2H17.6zM19.2,6.4H20V7.2H19.2zM20,6.4H20.8V7.2H20zM20.8,6.4H21.6V7.2H20.8zM21.6,6.4H22.4V7.2H21.6zM22.4,6.4H23.2V7.2H22.4zM23.2,6.4H24V7.2H23.2zM24,6.4H24.8V7.2H24zM10.4,7.2H11.2V8H10.4zM13.6,7.2H14.4V8H13.6zM15.2,7.2H16V8H15.2zM16,7.2H16.8V8H16zM16.8,7.2H17.6V8H16.8zM17.6,7.2H18.4V8H17.6zM1.6,8H2.4V8.8H1.6zM3.2,8H4V8.8H3.2zM4.8,8H5.6V8.8H4.8zM6.4,8H7.2V8.8H6.4zM10.4,8H11.2V8.8H10.4zM11.2,8H12V8.8H11.2zM14.4,8H15.2V8.8H14.4zM15.2,8H16V8.8H15.2zM17.6,8H18.4V8.8H17.6zM20.8,8H21.6V8.8H20.8zM23.2,8H24V8.8H23.2zM4,8.8H4.8V9.6H4zM4.8,8.8H5.6V9.6H4.8zM7.2,8.8H8V9.6H7.2zM9.6,8.8H10.4V9.6H9.6zM10.4,8.8H11.2V9.6H10.4zM11.2,8.8H12V9.6H11.2zM12,8.8H12.8V9.6H12zM13.6,8.8H14.4V9.6H13.6zM14.4,8.8H15.2V9.6H14.4zM17.6,8.8H18.4V9.6H17.6zM19.2,8.8H20V9.6H19.2zM21.6,8.8H22.4V9.6H21.6zM24,8.8H24.8V9.6H24zM1.6,9.6H2.4V10.4H1.6zM4,9.6H4.8V10.4H4zM6.4,9.6H7.2V10.4H6.4zM8,9.6H8.8V10.4H8zM8.8,9.6H9.6V10.4H8.8zM10.4,9.6H11.2V10.4H10.4zM11.2,9.6H12V10.4H11.2zM12.8,9.6H13.6V10.4H12.8zM13.6,9.6H14.4V10.4H13.6zM14.4,9.6H15.2V10.4H14.4zM17.6,9.6H18.4V10.4H17.6zM19.2,9.6H20V10.4H19.2zM20,9.6H20.8V10.4H20zM20.8,9.6H21.6V10.4H20.8zM22.4,9.6H23.2V10.4H22.4zM23.2,9.6H24V10.4H23.2zM24,9.6H24.8V10.4H24zM2.4,10.4H3.2V11.2H2.4zM3.2,10.4H4V11.2H3.2zM4,10.4H4.8V11.2H4zM8,10.4H8.8V11.2H8zM11.2,10.4H12V11.2H11.2zM12,10.4H12.8V11.2H12zM12.8,10.4H13.6V11.2H12.8zM14.4,10.4H15.2V11.2H14.4zM15.2,10.4H16V11.2H15.2zM17.6,10.4H18.4V11.2H17.6zM19.2,10.4H20V11.2H19.2zM20,10.4H20.8V11.2H20zM23.2,10.4H24V11.2H23.2zM1.6,11.2H2.4V12H1.6zM2.4,11.2H3.2V12H2.4zM3.2,11.2H4V12H3.2zM4,11.2H4.8V12H4zM4.8,11.2H5.6V12H4.8zM6.4,11.2H7.2V12H6.4zM7.2,11.2H8V12H7.2zM8,11.2H8.8V12H8zM8.8,11.2H9.6V12H8.8zM10.4,11.2H11.2V12H10.4zM12.8,11.2H13.6V12H12.8zM13.6,11.2H14.4V12H13.6zM15.2,11.2H16V12H15.2zM16,11.2H16.8V12H16zM19.2,11.2H20V12H19.2zM21.6,11.2H22.4V12H21.6zM23.2,11.2H24V12H23.2zM24,11.2H24.8V12H24zM2.4,12H3.2V12.8H2.4zM7.2,12H8V12.8H7.2zM8,12H8.8V12.8H8zM8.8,12H9.6V12.8H8.8zM9.6,12H10.4V12.8H9.6zM10.4,12H11.2V12.8H10.4zM11.2,12H12V12.8H11.2zM12.8,12H13.6V12.8H12.8zM13.6,12H14.4V12.8H13.6zM17.6,12H18.4V12.8H17.6zM18.4,12H19.2V12.8H18.4zM19.2,12H20V12.8H19.2zM21.6,12H22.4V12.8H21.6zM24,12H24.8V12.8H24z" fill="#000"/></svg>
     </div>
-    <p style="font-size: 14px; color: #6a6a8a;">Scan to play on your phone</p>
+    <p style="font-size:13px; color:rgba(255,255,255,0.6);">havas-test.vercel.app</p>
   </div>
 
-  <!-- Mobile: Home Screen -->
-  <div id="home-screen" class="screen">
-    <img src="Sources/e8d2632aea80df26cb4968461f1e3ac6.webp" alt="Twister" class="logo">
-    <div class="home-title">Finger Edition</div>
-    <p class="subtitle">Place your fingers on the right colors. Don't lift them or it's game over!</p>
-    <div class="color-preview">
-      <span style="background: #e63946;"></span>
-      <span style="background: #457b9d;"></span>
-      <span style="background: #2a9d8f;"></span>
-      <span style="background: #e9c46a;"></span>
+  <!-- Setup screen -->
+  <div id="setup-page" class="page">
+    <div id="setup-screen">
+      <img src="Sources/Hasbro_logo.svg.png" alt="Hasbro" class="setup-hasbro">
+      <div class="setup-title">Who's playing?</div>
+      <div class="setup-sub">Enter 1 to 8 player names</div>
+      <div class="players-list" id="players-list"></div>
+      <button class="btn-add" id="btn-add-player">+ Add player</button>
+      <button class="btn-start" id="btn-start-session" disabled>Let's play!</button>
     </div>
-    <button class="btn btn-play" id="btn-start">Play</button>
   </div>
 
-  <!-- Game Screen -->
-  <div id="game-screen" class="screen">
-    <div class="game-header">
-      <div class="instruction-bar">
-        <div class="instruction-text" id="instruction-text">Get ready...</div>
-        <div class="instruction-sub" id="instruction-sub"></div>
-        <div class="progress-dots" id="progress-dots"></div>
+  <!-- Games screen -->
+  <div id="games-page" class="page">
+    <div id="games-screen">
+      <div class="top-bar">
+        <img src="Sources/Hasbro_logo.svg.png" alt="Hasbro" class="hasbro-logo">
+        <button class="btn-players" id="btn-change-players">Players</button>
+      </div>
+      <div class="hero-title">Family<br>Game Time</div>
+      <div class="hero-sub">Pick a game to start</div>
+      <div class="players-chips" id="players-chips"></div>
+      <div class="games-grid">
+
+        <!-- Twister — wide featured card -->
+        <div class="game-card card-twister game-card-wide" onclick="goTo('twister.html')">
+          <img src="Sources/e8d2632aea80df26cb4968461f1e3ac6.webp" alt="Twister">
+          <span class="card-label">Finger Edition</span>
+        </div>
+
+        <!-- Connect 4 -->
+        <div class="game-card card-connect4" onclick="goTo('connect4.html')">
+          <img src="Sources/Connect_4_2013.webp" alt="Connect 4">
+        </div>
+
+        <!-- Cluedo -->
+        <div class="game-card card-cluedo coming-soon">
+          <img src="Sources/Cluedo_2023.webp" alt="Cluedo">
+        </div>
+
+        <!-- Operation -->
+        <div class="game-card card-operation coming-soon">
+          <span class="operation-text">Operation</span>
+        </div>
+
+        <!-- Monopoly -->
+        <div class="game-card card-monopoly coming-soon">
+          <img src="Sources/Monopoly_Brand.svg" alt="Monopoly">
+        </div>
+
       </div>
     </div>
-    <div class="board" id="board"></div>
-    <div class="countdown-overlay" id="countdown-overlay">
-      <div class="countdown-number" id="countdown-number">3</div>
-    </div>
-    <div id="fail-overlay">
-      <h2>Oops!</h2>
-      <p id="fail-message">You lifted a finger! Keep all fingers down until the end.</p>
-      <button class="btn btn-retry" id="btn-retry">Try Again</button>
-      <button class="btn btn-secondary" id="btn-home-from-fail">Home</button>
-    </div>
   </div>
 
-  <!-- Win Screen -->
-  <div id="win-screen" class="screen">
-    <div class="confetti-container" id="confetti-container"></div>
-    <h2>You did it!</h2>
-    <p id="win-message">You twisted all your fingers into place!</p>
-    <button class="btn btn-new-game" id="btn-new-game">Play Again</button>
-    <button class="btn btn-secondary" id="btn-home-from-win" style="margin-top: 8px;">Home</button>
-  </div>
-
+  <script src="shared.js"></script>
   <script>
-    // ── Config ──
-    const COLORS = [
-      { name: 'red', label: 'Red', css: 'color-red' },
-      { name: 'blue', label: 'Blue', css: 'color-blue' },
-      { name: 'green', label: 'Green', css: 'color-green' },
-      { name: 'yellow', label: 'Yellow', css: 'color-yellow' },
-    ];
-
-    const FINGERS = [
-      { name: 'finger1', label: '1st finger' },
-      { name: 'finger2', label: '2nd finger' },
-      { name: 'finger3', label: '3rd finger' },
-      { name: 'finger4', label: '4th finger' },
-    ];
-
-    const GRID_COLS = 3;
-    const GRID_ROWS = 4;
-    const TOTAL_CIRCLES = GRID_COLS * GRID_ROWS;
-    const NUM_STEPS = 4; // fingers to place
-
-    // ── State ──
-    let currentStep = 0;
-    let steps = [];
-    let board = [];
-    let touchedCircles = []; // indices of circles currently required to be held
-    let activeTouches = new Map(); // touchId -> circleIndex
-    let gameActive = false;
-    let holdPhaseActive = false;
-
-    // ── DOM ──
-    const boardEl = document.getElementById('board');
-    const instructionText = document.getElementById('instruction-text');
-    const instructionSub = document.getElementById('instruction-sub');
-    const progressDots = document.getElementById('progress-dots');
-    const failOverlay = document.getElementById('fail-overlay');
-    const failMessage = document.getElementById('fail-message');
-    const countdownOverlay = document.getElementById('countdown-overlay');
-    const countdownNumber = document.getElementById('countdown-number');
-    const screens = document.querySelectorAll('.screen');
-
-    // ── Device Detection ──
-    function isMobile() {
-      return /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        || (navigator.maxTouchPoints > 1);
-    }
-
-    // ── Screen Management ──
-    function showScreen(id) {
-      screens.forEach(function(s) { s.classList.remove('active'); });
-      document.getElementById(id).classList.add('active');
-    }
-
-    // ── Init ──
-    function init() {
-      if (!isMobile()) {
-        showScreen('desktop-screen');
+    // ── Boot ──────────────────────────────────────────────
+    function boot() {
+      if (!HG.isMobile()) {
+        document.getElementById('desktop-screen').classList.add('active');
         return;
       }
-      showScreen('home-screen');
+      if (HG.hasPlayers()) {
+        showGames();
+      } else {
+        showSetup();
+      }
     }
 
-    // ── Board Generation ──
-    function generateBoard() {
-      board = [];
-      for (var i = 0; i < TOTAL_CIRCLES; i++) {
-        board.push(COLORS[Math.floor(Math.random() * COLORS.length)]);
-      }
-      return board;
+    // ── Setup ─────────────────────────────────────────────
+    function showSetup() {
+      document.getElementById('games-page').classList.remove('active');
+      document.getElementById('setup-page').classList.add('active');
+      renderSetupRows();
     }
 
-    function renderBoard() {
-      // Clear board
-      while (boardEl.firstChild) {
-        boardEl.removeChild(boardEl.firstChild);
-      }
-      boardEl.style.gridTemplateColumns = 'repeat(' + GRID_COLS + ', 1fr)';
-      boardEl.style.gridTemplateRows = 'repeat(' + GRID_ROWS + ', 1fr)';
-      boardEl.style.gap = '12px';
+    var playerCount = 2;
 
-      board.forEach(function(color, i) {
-        var circle = document.createElement('div');
-        circle.className = 'circle ' + color.css;
-        circle.dataset.index = i;
-        boardEl.appendChild(circle);
-      });
-    }
+    function renderSetupRows() {
+      var list = document.getElementById('players-list');
+      while (list.firstChild) list.removeChild(list.firstChild);
 
-    // ── Step Generation ──
-    function generateSteps() {
-      steps = [];
-      var usedColors = [];
-      var usedCircleIndices = [];
+      for (var i = 0; i < playerCount; i++) {
+        (function(idx) {
+          var row = document.createElement('div');
+          row.className = 'player-row';
 
-      // Shuffle colors so each step gets a different color
-      var shuffledColors = COLORS.slice();
-      for (var j = shuffledColors.length - 1; j > 0; j--) {
-        var r = Math.floor(Math.random() * (j + 1));
-        var tmp = shuffledColors[j];
-        shuffledColors[j] = shuffledColors[r];
-        shuffledColors[r] = tmp;
-      }
+          var num = document.createElement('div');
+          num.className = 'player-num';
+          num.textContent = idx + 1;
 
-      for (var i = 0; i < NUM_STEPS; i++) {
-        // Fingers go in order: 1st, 2nd, 3rd, 4th
-        var finger = FINGERS[i];
+          var input = document.createElement('input');
+          input.className = 'player-input';
+          input.type = 'text';
+          input.placeholder = 'Player ' + (idx + 1);
+          input.maxLength = 16;
+          input.id = 'p-' + idx;
+          input.addEventListener('input', validateSetup);
 
-        // Use the next unique color
-        var color = shuffledColors[i];
+          row.appendChild(num);
+          row.appendChild(input);
 
-        // Find circles of that color that aren't used yet
-        var available = [];
-        board.forEach(function(c, idx) {
-          if (c.name === color.name && usedCircleIndices.indexOf(idx) === -1) {
-            available.push({ color: c, idx: idx });
-          }
-        });
-
-        // If no available circle of this color, pick any unused circle with an unused color
-        var targetIdx, targetColor;
-        if (available.length > 0) {
-          var pick = available[Math.floor(Math.random() * available.length)];
-          targetIdx = pick.idx;
-          targetColor = color;
-        } else {
-          var anyAvailable = [];
-          board.forEach(function(c, idx) {
-            if (usedCircleIndices.indexOf(idx) === -1 && usedColors.indexOf(c.name) === -1) {
-              anyAvailable.push({ color: c, idx: idx });
-            }
-          });
-          if (anyAvailable.length === 0) {
-            board.forEach(function(c, idx) {
-              if (usedCircleIndices.indexOf(idx) === -1) {
-                anyAvailable.push({ color: c, idx: idx });
-              }
+          if (playerCount > 1) {
+            var del = document.createElement('button');
+            del.className = 'btn-remove';
+            del.textContent = '×';
+            del.addEventListener('click', function() {
+              playerCount--;
+              renderSetupRows();
             });
+            row.appendChild(del);
           }
-          var pick2 = anyAvailable[Math.floor(Math.random() * anyAvailable.length)];
-          targetIdx = pick2.idx;
-          targetColor = pick2.color;
-        }
 
-        usedCircleIndices.push(targetIdx);
-        usedColors.push(targetColor.name);
-        steps.push({ finger: finger, color: targetColor, circleIndex: targetIdx });
+          list.appendChild(row);
+        })(i);
       }
+
+      document.getElementById('btn-add-player').style.display = playerCount >= 8 ? 'none' : 'block';
+      validateSetup();
     }
 
-    // ── Render Progress Dots ──
-    function renderProgress() {
-      while (progressDots.firstChild) {
-        progressDots.removeChild(progressDots.firstChild);
+    function validateSetup() {
+      var filled = 0;
+      for (var i = 0; i < playerCount; i++) {
+        var el = document.getElementById('p-' + i);
+        if (el && el.value.trim().length > 0) filled++;
       }
-      steps.forEach(function(_, i) {
-        var dot = document.createElement('div');
-        dot.className = 'progress-dot';
-        if (i < currentStep) dot.classList.add('done');
-        if (i === currentStep) dot.classList.add('current');
-        progressDots.appendChild(dot);
+      document.getElementById('btn-start-session').disabled = filled < 1;
+    }
+
+    document.getElementById('btn-add-player').addEventListener('click', function() {
+      if (playerCount < 8) { playerCount++; renderSetupRows(); }
+    });
+
+    document.getElementById('btn-start-session').addEventListener('click', function() {
+      var names = [];
+      for (var i = 0; i < playerCount; i++) {
+        var el = document.getElementById('p-' + i);
+        var name = el ? el.value.trim() : '';
+        if (name) names.push(name);
+        else names.push('Player ' + (i + 1));
+      }
+      HG.setPlayers(names);
+      showGames();
+    });
+
+    // ── Games ─────────────────────────────────────────────
+    function showGames() {
+      document.getElementById('setup-page').classList.remove('active');
+      document.getElementById('games-page').classList.add('active');
+      renderChips();
+    }
+
+    function renderChips() {
+      var chips = document.getElementById('players-chips');
+      while (chips.firstChild) chips.removeChild(chips.firstChild);
+      HG.getPlayers().forEach(function(name) {
+        var chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = name;
+        chips.appendChild(chip);
       });
     }
 
-    // ── Color hex helper ──
-    function getColorHex(name) {
-      switch(name) {
-        case 'red': return '#ff6b6b';
-        case 'blue': return '#74b9ff';
-        case 'green': return '#55efc4';
-        case 'yellow': return '#ffeaa7';
-        default: return '#fff';
-      }
-    }
-
-    // ── Update Instruction ──
-    function showInstruction() {
-      if (currentStep >= steps.length) return;
-      var step = steps[currentStep];
-
-      // Build instruction with DOM elements (no innerHTML)
-      while (instructionText.firstChild) {
-        instructionText.removeChild(instructionText.firstChild);
-      }
-      var fingerSpan = document.createElement('span');
-      fingerSpan.className = 'finger-name';
-      fingerSpan.textContent = step.finger.label;
-
-      var arrow = document.createTextNode(' \u2192 ');
-
-      var colorSpan = document.createElement('span');
-      colorSpan.style.color = getColorHex(step.color.name);
-      colorSpan.textContent = step.color.label;
-
-      instructionText.appendChild(fingerSpan);
-      instructionText.appendChild(arrow);
-      instructionText.appendChild(colorSpan);
-
-      instructionSub.textContent = 'Step ' + (currentStep + 1) + ' of ' + steps.length + ' \u2014 tap the highlighted circle';
-      renderProgress();
-      highlightTarget();
-    }
-
-    // ── Highlight ──
-    function highlightTarget() {
-      var circles = boardEl.querySelectorAll('.circle');
-      circles.forEach(function(c, i) {
-        c.classList.remove('target', 'dimmed');
-        if (touchedCircles.indexOf(i) !== -1) {
-          c.classList.add('touched');
-        } else if (currentStep < steps.length && i === steps[currentStep].circleIndex) {
-          c.classList.add('target');
-        } else {
-          c.classList.add('dimmed');
-        }
+    document.getElementById('btn-change-players').addEventListener('click', function() {
+      playerCount = Math.max(HG.getPlayers().length, 2);
+      showSetup();
+      // Pre-fill existing names
+      var players = HG.getPlayers();
+      players.forEach(function(name, i) {
+        var el = document.getElementById('p-' + i);
+        if (el) el.value = name;
       });
+      validateSetup();
+    });
+
+    // ── Navigate ──────────────────────────────────────────
+    function goTo(url) {
+      window.location.href = url;
     }
 
-    // ── Countdown ──
-    function doCountdown() {
-      return new Promise(function(resolve) {
-        countdownOverlay.classList.add('active');
-        var count = 3;
-        countdownNumber.textContent = count;
-
-        var interval = setInterval(function() {
-          count--;
-          if (count === 0) {
-            countdownNumber.textContent = 'GO!';
-            countdownNumber.style.animation = 'none';
-            void countdownNumber.offsetWidth;
-            countdownNumber.style.animation = 'count-pop 0.6s ease-out';
-          } else if (count < 0) {
-            clearInterval(interval);
-            countdownOverlay.classList.remove('active');
-            resolve();
-          } else {
-            countdownNumber.textContent = count;
-            countdownNumber.style.animation = 'none';
-            void countdownNumber.offsetWidth;
-            countdownNumber.style.animation = 'count-pop 0.6s ease-out';
-          }
-        }, 800);
-      });
-    }
-
-    // ── Start Game ──
-    async function startGame() {
-      showScreen('game-screen');
-      failOverlay.classList.remove('active');
-
-      currentStep = 0;
-      touchedCircles = [];
-      activeTouches = new Map();
-      holdPhaseActive = false;
-      gameActive = false;
-
-      generateBoard();
-      renderBoard();
-      generateSteps();
-
-      await doCountdown();
-
-      gameActive = true;
-      showInstruction();
-    }
-
-    // ── Touch Handling ──
-    function getCircleFromTouch(touch) {
-      var el = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (el && el.classList.contains('circle')) {
-        return parseInt(el.dataset.index, 10);
-      }
-      return -1;
-    }
-
-    function handleTouchStart(e) {
-      e.preventDefault();
-      if (!gameActive) return;
-
-      for (var i = 0; i < e.changedTouches.length; i++) {
-        var touch = e.changedTouches[i];
-        var circleIdx = getCircleFromTouch(touch);
-        if (circleIdx === -1) continue;
-
-        activeTouches.set(touch.identifier, circleIdx);
-
-        // Check if this is the current target
-        if (!holdPhaseActive && currentStep < steps.length && circleIdx === steps[currentStep].circleIndex) {
-          touchedCircles.push(circleIdx);
-          currentStep++;
-
-          if (currentStep >= steps.length) {
-            enterHoldPhase();
-          } else {
-            showInstruction();
-          }
-        }
-      }
-    }
-
-    function handleTouchEnd(e) {
-      e.preventDefault();
-      if (!gameActive) return;
-
-      for (var i = 0; i < e.changedTouches.length; i++) {
-        var touch = e.changedTouches[i];
-        var circleIdx = activeTouches.get(touch.identifier);
-        activeTouches.delete(touch.identifier);
-
-        // If the lifted finger was on a required circle, game over
-        if (circleIdx !== undefined && touchedCircles.indexOf(circleIdx) !== -1) {
-          if (holdPhaseActive || currentStep > 0) {
-            gameFail('You lifted a finger! Keep all fingers pressed down.');
-          }
-        }
-      }
-    }
-
-    function handleTouchMove(e) {
-      e.preventDefault();
-      if (!gameActive) return;
-
-      for (var i = 0; i < e.changedTouches.length; i++) {
-        var touch = e.changedTouches[i];
-        var prevCircle = activeTouches.get(touch.identifier);
-        var newCircle = getCircleFromTouch(touch);
-
-        if (prevCircle !== newCircle) {
-          activeTouches.set(touch.identifier, newCircle);
-
-          // If they moved off a required circle
-          if (prevCircle !== undefined && touchedCircles.indexOf(prevCircle) !== -1) {
-            var stillCovered = false;
-            activeTouches.forEach(function(cidx, tid) {
-              if (tid !== touch.identifier && cidx === prevCircle) {
-                stillCovered = true;
-              }
-            });
-            if (!stillCovered) {
-              gameFail('You moved off a circle! Hold your fingers steady.');
-            }
-          }
-        }
-      }
-    }
-
-    // ── Hold Phase ──
-    function enterHoldPhase() {
-      holdPhaseActive = true;
-
-      while (instructionText.firstChild) {
-        instructionText.removeChild(instructionText.firstChild);
-      }
-      instructionText.textContent = 'Hold steady!';
-      instructionSub.textContent = 'Keep all fingers down for 2 seconds...';
-      renderProgress();
-
-      var countdown = 2;
-      var holdInterval = setInterval(function() {
-        countdown--;
-        if (!gameActive) {
-          clearInterval(holdInterval);
-          return;
-        }
-        if (countdown <= 0) {
-          clearInterval(holdInterval);
-          gameWin();
-        } else {
-          instructionSub.textContent = 'Keep all fingers down for ' + countdown + ' second' + (countdown > 1 ? 's' : '') + '...';
-        }
-      }, 1000);
-    }
-
-    // ── Game Over ──
-    function gameFail(message) {
-      gameActive = false;
-      holdPhaseActive = false;
-      failMessage.textContent = message;
-      failOverlay.classList.add('active');
-    }
-
-    function gameWin() {
-      gameActive = false;
-      holdPhaseActive = false;
-      showScreen('win-screen');
-      spawnConfetti();
-    }
-
-    // ── Confetti ──
-    function spawnConfetti() {
-      var container = document.getElementById('confetti-container');
-      while (container.firstChild) {
-        container.removeChild(container.firstChild);
-      }
-      var confettiColors = ['#e63946', '#457b9d', '#2a9d8f', '#e9c46a', '#ff6b6b', '#74b9ff', '#55efc4', '#ffeaa7'];
-
-      for (var i = 0; i < 60; i++) {
-        var piece = document.createElement('div');
-        piece.className = 'confetti-piece';
-        piece.style.left = Math.random() * 100 + '%';
-        piece.style.backgroundColor = confettiColors[Math.floor(Math.random() * confettiColors.length)];
-        piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
-        piece.style.animationDelay = Math.random() * 0.8 + 's';
-        piece.style.width = (6 + Math.random() * 8) + 'px';
-        piece.style.height = (6 + Math.random() * 8) + 'px';
-        piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
-        container.appendChild(piece);
-      }
-    }
-
-    // ── Event Listeners ──
-    document.getElementById('btn-start').addEventListener('click', startGame);
-    document.getElementById('btn-retry').addEventListener('click', startGame);
-    document.getElementById('btn-new-game').addEventListener('click', startGame);
-    document.getElementById('btn-home-from-fail').addEventListener('click', function() { showScreen('home-screen'); });
-    document.getElementById('btn-home-from-win').addEventListener('click', function() { showScreen('home-screen'); });
-
-    // Touch events on the board
-    boardEl.addEventListener('touchstart', handleTouchStart, { passive: false });
-    boardEl.addEventListener('touchend', handleTouchEnd, { passive: false });
-    boardEl.addEventListener('touchcancel', handleTouchEnd, { passive: false });
-    boardEl.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-    // Prevent scrolling/zooming
-    document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
-
-    // Boot
-    init();
+    boot();
   </script>
 </body>
 </html>
