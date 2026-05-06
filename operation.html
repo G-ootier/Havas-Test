@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>Operation — Steady Hands</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+    html, body {
+      width:100%; height:100%; overflow:hidden;
+      font-family:'Fredoka','Arial Rounded MT Bold',Arial,sans-serif;
+      background-color:#1a1a1a; color:#fff;
+      touch-action:none;
+    }
+    .screen { display:none; position:absolute; inset:0; flex-direction:column; align-items:center; justify-content:center; }
+    .screen.active { display:flex; }
+
+    .btn { padding:16px 40px; border:none; border-radius:50px; font-size:18px; font-weight:700; font-family:inherit; text-transform:uppercase; letter-spacing:1px; cursor:pointer; transition:transform 0.12s; }
+    .btn:active { transform:scale(0.95); }
+    .btn-orange { background:linear-gradient(135deg,#F57C00,#E65100); color:#fff; box-shadow:0 6px 20px rgba(0,0,0,0.3); }
+    .btn-ghost  { background:rgba(255,255,255,0.1); color:#fff; border:2px solid rgba(255,255,255,0.25); font-size:14px; padding:12px 28px; }
+
+    /* ── Lobby ── */
+    #lobby-screen {
+      background:radial-gradient(ellipse at center, #2a1a00 0%, #1a1a1a 70%);
+      gap:20px; padding:40px 24px; text-align:center;
+    }
+    .op-logo { width:220px; filter:drop-shadow(0 4px 16px rgba(245,124,0,0.5)); }
+    .lobby-sub { font-size:15px; color:rgba(255,255,255,0.65); max-width:280px; line-height:1.5; }
+    .turn-badge {
+      background:rgba(255,255,255,0.08); border:2px solid rgba(245,124,0,0.4);
+      border-radius:20px; padding:16px 28px; text-align:center;
+    }
+    .turn-badge .tl { font-size:12px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; }
+    .turn-badge .tn { font-size:26px; font-weight:700; color:#FFA726; margin-top:4px; }
+
+    /* ── Game ── */
+    #game-screen { background:#111; flex-direction:column; padding:0; justify-content:flex-start; }
+
+    .game-hud {
+      width:100%; padding:14px 20px 10px;
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0;
+    }
+    .hud-player { font-size:16px; font-weight:700; color:#FFA726; }
+    .hud-score  { font-size:14px; color:rgba(255,255,255,0.6); }
+    .hud-lives  { font-size:20px; letter-spacing:2px; }
+
+    /* canvas container */
+    .canvas-wrap {
+      flex:1; width:100%;
+      display:flex; align-items:center; justify-content:center;
+      padding:0 12px 12px;
+      position:relative;
+    }
+    canvas {
+      border-radius:16px;
+      background:#0a0a0a;
+      box-shadow:0 8px 32px rgba(0,0,0,0.6);
+      touch-action:none;
+      display:block;
+      max-width:400px;
+      width:100%;
+    }
+
+    /* buzz flash overlay */
+    .buzz-flash {
+      position:absolute; inset:12px;
+      border-radius:16px;
+      background:rgba(229,57,53,0.55);
+      pointer-events:none;
+      opacity:0;
+      transition:opacity 0.05s;
+    }
+    .buzz-flash.active { opacity:1; }
+
+    /* ── Countdown ── */
+    .countdown-overlay { position:absolute; inset:0; z-index:40; background:rgba(0,0,0,0.8); display:none; align-items:center; justify-content:center; flex-direction:column; gap:10px; }
+    .countdown-overlay.active { display:flex; }
+    .cd-name  { font-size:20px; font-weight:700; color:#FFA726; }
+    .cd-num   { font-size:110px; font-weight:900; animation:count-pop 0.6s ease-out; }
+    @keyframes count-pop { 0%{transform:scale(2);opacity:0;}60%{transform:scale(0.9);opacity:1;}100%{transform:scale(1);opacity:1;} }
+
+    /* ── Results ── */
+    #results-screen {
+      background:radial-gradient(ellipse at center,#1a2a1a 0%,#111 70%);
+      gap:16px; padding:40px 24px; text-align:center; overflow-y:auto;
+    }
+    .res-title { font-size:26px; font-weight:700; color:#69F0AE; }
+    .res-list  { width:100%; max-width:340px; }
+    .res-row   { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:14px; background:rgba(255,255,255,0.07); margin-bottom:8px; }
+    .res-row.first { background:rgba(105,240,174,0.15); border:2px solid rgba(105,240,174,0.35); }
+    .res-rank  { font-size:22px; width:28px; text-align:center; flex-shrink:0; }
+    .res-name  { flex:1; font-size:16px; font-weight:700; text-align:left; }
+    .res-score { font-size:14px; font-weight:600; color:#69F0AE; }
+
+    /* ── Leaderboard ── */
+    #leaderboard-screen {
+      background:radial-gradient(ellipse at center,#1a2a1a 0%,#111 70%);
+      gap:16px; padding:40px 24px; text-align:center;
+    }
+    .lb-title { font-size:28px; font-weight:700; color:#69F0AE; }
+    .lb-row   { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:14px; background:rgba(255,255,255,0.07); margin-bottom:8px; width:100%; max-width:340px; }
+    .lb-row.lb-first { background:rgba(105,240,174,0.15); border:2px solid rgba(105,240,174,0.4); }
+    .lb-rank  { font-size:22px; width:28px; text-align:center; flex-shrink:0; }
+    .lb-name  { flex:1; font-size:16px; font-weight:700; text-align:left; }
+    .lb-sc    { font-size:14px; font-weight:600; color:#69F0AE; }
+
+    /* Confetti */
+    .confetti-container { position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:5; }
+    .confetti-piece { position:absolute; top:-20px; animation:confetti-fall linear forwards; }
+    @keyframes confetti-fall { 0%{transform:translateY(0) rotate(0deg);opacity:1;}100%{transform:translateY(110vh) rotate(720deg);opacity:0;} }
+  </style>
+</head>
+<body>
+
+  <!-- Lobby -->
+  <div id="lobby-screen" class="screen active">
+    <img src="Sources/Operation_2012_Logo.webp" alt="Operation" class="op-logo">
+    <p class="lobby-sub">Drag your tool through the path without touching the walls. Every buzz costs you points!</p>
+    <div class="turn-badge">
+      <div class="tl">Up next</div>
+      <div class="tn" id="lobby-name">Player 1</div>
+      <div class="tl" id="lobby-turn-sub">Turn 1 of 1</div>
+    </div>
+    <div id="standings-mini" style="width:100%;max-width:320px;"></div>
+    <button class="btn btn-orange" id="btn-go">Go!</button>
+    <button class="btn btn-ghost" onclick="goBack()">Menu</button>
+  </div>
+
+  <!-- Game -->
+  <div id="game-screen" class="screen">
+    <div class="game-hud">
+      <div>
+        <div class="hud-player" id="hud-player">Player 1</div>
+        <div class="hud-score">Score: <span id="hud-score">0</span></div>
+      </div>
+      <div class="hud-lives" id="hud-lives">❤️❤️❤️</div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="game-canvas"></canvas>
+      <div class="buzz-flash" id="buzz-flash"></div>
+    </div>
+
+    <div class="countdown-overlay" id="countdown-overlay">
+      <div class="cd-name" id="cd-name"></div>
+      <div class="cd-num"  id="cd-num">3</div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results-screen" class="screen">
+    <div class="confetti-container" id="confetti-res"></div>
+    <div class="res-title">Round Results</div>
+    <div class="res-list" id="res-list"></div>
+    <button class="btn btn-orange" id="btn-see-lb" style="margin-top:8px;">Done</button>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="leaderboard-screen" class="screen">
+    <div class="confetti-container" id="confetti-lb"></div>
+    <div class="lb-title">Leaderboard</div>
+    <div id="lb-rows"></div>
+    <button class="btn btn-orange" id="btn-play-again" style="margin-top:8px;">Play Again</button>
+    <button class="btn btn-ghost" onclick="goBack()">Menu</button>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    // ─────────────────────────────────────────────────────
+    // PATH DEFINITIONS  (normalised 0-1 coords, path is centre-line)
+    // Each level has: walls (array of polygon points), start, end, bonus bones
+    // ─────────────────────────────────────────────────────
+    var LEVELS = [
+      {
+        name: 'The Wrist Bone',
+        pathW: 0.09,       // half-width of corridor as fraction of canvas width
+        points: [           // centre-line waypoints [x,y] 0-1
+          [0.12, 0.50],
+          [0.30, 0.50],
+          [0.30, 0.25],
+          [0.55, 0.25],
+          [0.55, 0.75],
+          [0.80, 0.75],
+          [0.88, 0.75],
+        ],
+      },
+      {
+        name: 'The Funny Bone',
+        pathW: 0.08,
+        points: [
+          [0.12, 0.80],
+          [0.25, 0.80],
+          [0.25, 0.50],
+          [0.45, 0.50],
+          [0.45, 0.20],
+          [0.65, 0.20],
+          [0.65, 0.50],
+          [0.85, 0.50],
+          [0.88, 0.50],
+        ],
+      },
+      {
+        name: 'The Spare Ribs',
+        pathW: 0.075,
+        points: [
+          [0.12, 0.70],
+          [0.30, 0.70],
+          [0.30, 0.30],
+          [0.50, 0.30],
+          [0.50, 0.70],
+          [0.70, 0.70],
+          [0.70, 0.30],
+          [0.88, 0.30],
+        ],
+      },
+    ];
+
+    // ─────────────────────────────────────────────────────
+    // SESSION STATE
+    // ─────────────────────────────────────────────────────
+    var players = [], turnOrder = [], currentTurnIndex = 0, roundScores = {};
+    var currentLevel = 0;
+
+    // ─────────────────────────────────────────────────────
+    // GAME STATE
+    // ─────────────────────────────────────────────────────
+    var canvas, ctx, W, H;
+    var toolX = 0, toolY = 0;
+    var TOOL_R = 14;   // radius of the tool tip circle
+    var tracking = false;
+    var lives = 3, score = 0;
+    var buzzCooldown = false;
+    var gameRunning = false;
+    var startPt, endPt;
+    var levelPts = [];   // resolved pixel coords of centre-line
+    var halfW = 0;       // half-corridor in pixels
+
+    // ─────────────────────────────────────────────────────
+    // BOOT
+    // ─────────────────────────────────────────────────────
+    function boot() {
+      players    = HG.getPlayers();
+      if (!players.length) players = ['Player 1'];
+      turnOrder  = HG.shuffle(players.slice());
+      currentTurnIndex = 0;
+      roundScores = {};
+      currentLevel = Math.floor(Math.random() * LEVELS.length); // same level per round
+      showLobby();
+    }
+
+    // ─────────────────────────────────────────────────────
+    // LOBBY
+    // ─────────────────────────────────────────────────────
+    function showLobby() {
+      showScreen('lobby-screen');
+      var name = turnOrder[currentTurnIndex];
+      document.getElementById('lobby-name').textContent = name;
+      document.getElementById('lobby-turn-sub').textContent =
+        'Turn ' + (currentTurnIndex+1) + ' of ' + turnOrder.length;
+      renderStandings();
+    }
+
+    function renderStandings() {
+      var el = document.getElementById('standings-mini');
+      while (el.firstChild) el.removeChild(el.firstChild);
+      if (!Object.keys(roundScores).length) return;
+      turnOrder.forEach(function(n) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;padding:7px 12px;border-radius:10px;background:rgba(255,255,255,0.07);margin-bottom:5px;font-size:14px;';
+        var nm = document.createElement('span'); nm.style.fontWeight='700'; nm.textContent = n;
+        var sc = document.createElement('span'); sc.style.color='#FFA726';
+        sc.textContent = roundScores[n] !== undefined ? roundScores[n] + ' pts' : '–';
+        row.appendChild(nm); row.appendChild(sc);
+        el.appendChild(row);
+      });
+    }
+
+    document.getElementById('btn-go').addEventListener('click', function() {
+      startPlayerTurn();
+    });
+
+    // ─────────────────────────────────────────────────────
+    // PLAYER TURN
+    // ─────────────────────────────────────────────────────
+    async function startPlayerTurn() {
+      lives  = 3;
+      score  = 0;
+      tracking  = false;
+      gameRunning = false;
+      buzzCooldown = false;
+
+      var name = turnOrder[currentTurnIndex];
+      document.getElementById('hud-player').textContent = name;
+      updateHUD();
+      showScreen('game-screen');
+      initCanvas();
+      await doCountdown(name);
+      gameRunning = true;
+    }
+
+    // ─────────────────────────────────────────────────────
+    // CANVAS INIT
+    // ─────────────────────────────────────────────────────
+    function initCanvas() {
+      canvas = document.getElementById('game-canvas');
+      ctx    = canvas.getContext('2d');
+
+      // Size canvas to fit the wrap
+      var wrap = canvas.parentElement;
+      var size = Math.min(wrap.clientWidth - 24, wrap.clientHeight - 24, 400);
+      canvas.width  = size;
+      canvas.height = size;
+      W = H = size;
+
+      // Resolve level coords
+      var lvl = LEVELS[currentLevel];
+      halfW = lvl.pathW * W;
+      levelPts = lvl.points.map(function(p){ return [p[0]*W, p[1]*H]; });
+      startPt  = levelPts[0];
+      endPt    = levelPts[levelPts.length - 1];
+
+      // Place tool at start
+      toolX = startPt[0];
+      toolY = startPt[1];
+
+      drawScene();
+    }
+
+    // ─────────────────────────────────────────────────────
+    // DRAW
+    // ─────────────────────────────────────────────────────
+    function drawScene() {
+      ctx.clearRect(0, 0, W, H);
+
+      // Background
+      ctx.fillStyle = '#0d0d0d';
+      ctx.fillRect(0, 0, W, H);
+
+      // Grid dots
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      for (var x = 20; x < W; x+=20)
+        for (var y = 20; y < H; y+=20) {
+          ctx.beginPath(); ctx.arc(x,y,1.5,0,Math.PI*2); ctx.fill();
+        }
+
+      drawPath();
+      drawStartEnd();
+      drawTool();
+    }
+
+    function drawPath() {
+      // Draw corridor (thick stroke = the path walls)
+      ctx.lineCap  = 'round';
+      ctx.lineJoin = 'round';
+
+      // Outer (wall colour)
+      ctx.strokeStyle = '#F57C00';
+      ctx.lineWidth   = (halfW * 2) + 4;
+      traceLine();
+      ctx.stroke();
+
+      // Inner (floor colour)
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth   = halfW * 2;
+      traceLine();
+      ctx.stroke();
+
+      // Subtle centre guide
+      ctx.strokeStyle = 'rgba(245,124,0,0.12)';
+      ctx.lineWidth   = 2;
+      ctx.setLineDash([8, 8]);
+      traceLine();
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function traceLine() {
+      ctx.beginPath();
+      ctx.moveTo(levelPts[0][0], levelPts[0][1]);
+      for (var i = 1; i < levelPts.length; i++)
+        ctx.lineTo(levelPts[i][0], levelPts[i][1]);
+    }
+
+    function drawStartEnd() {
+      // Start marker
+      ctx.fillStyle = '#69F0AE';
+      ctx.beginPath(); ctx.arc(startPt[0], startPt[1], TOOL_R + 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold ' + (TOOL_R) + 'px Fredoka, Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('▶', startPt[0], startPt[1]);
+
+      // End marker
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath(); ctx.arc(endPt[0], endPt[1], TOOL_R + 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillText('★', endPt[0], endPt[1]);
+    }
+
+    function drawTool() {
+      // Glow
+      var grd = ctx.createRadialGradient(toolX, toolY, 0, toolX, toolY, TOOL_R*2);
+      grd.addColorStop(0, 'rgba(105,240,174,0.35)');
+      grd.addColorStop(1, 'rgba(105,240,174,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(toolX, toolY, TOOL_R*2, 0, Math.PI*2); ctx.fill();
+
+      // Tool circle
+      ctx.fillStyle = '#69F0AE';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(toolX, toolY, TOOL_R, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+
+      // Cross-hair
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(toolX-6, toolY); ctx.lineTo(toolX+6, toolY);
+      ctx.moveTo(toolX, toolY-6); ctx.lineTo(toolX, toolY+6);
+      ctx.stroke();
+    }
+
+    // ─────────────────────────────────────────────────────
+    // COLLISION DETECTION
+    // Check if tool circle overlaps the corridor walls
+    // ─────────────────────────────────────────────────────
+    function isInsidePath(x, y) {
+      var minDist = Infinity;
+      for (var i = 0; i < levelPts.length - 1; i++) {
+        var d = distToSegment(x, y, levelPts[i][0], levelPts[i][1], levelPts[i+1][0], levelPts[i+1][1]);
+        if (d < minDist) minDist = d;
+      }
+      return minDist <= halfW - TOOL_R;
+    }
+
+    function distToSegment(px, py, ax, ay, bx, by) {
+      var dx = bx-ax, dy = by-ay;
+      var lenSq = dx*dx + dy*dy;
+      var t = lenSq > 0 ? Math.max(0, Math.min(1, ((px-ax)*dx + (py-ay)*dy) / lenSq)) : 0;
+      var nx = ax + t*dx - px, ny = ay + t*dy - py;
+      return Math.sqrt(nx*nx + ny*ny);
+    }
+
+    function hasReachedEnd(x, y) {
+      var dx = x - endPt[0], dy = y - endPt[1];
+      return Math.sqrt(dx*dx + dy*dy) < TOOL_R + 8;
+    }
+
+    // ─────────────────────────────────────────────────────
+    // TOUCH / MOUSE EVENTS
+    // ─────────────────────────────────────────────────────
+    function getPos(e) {
+      var rect = canvas.getBoundingClientRect();
+      var scaleX = canvas.width  / rect.width;
+      var scaleY = canvas.height / rect.height;
+      var src = e.touches ? e.touches[0] : e;
+      return {
+        x: (src.clientX - rect.left) * scaleX,
+        y: (src.clientY - rect.top)  * scaleY,
+      };
+    }
+
+    function onStart(e) {
+      e.preventDefault();
+      if (!gameRunning) return;
+      var pos = getPos(e);
+      // Must start near the start marker
+      var dx = pos.x - toolX, dy = pos.y - toolY;
+      if (Math.sqrt(dx*dx+dy*dy) < TOOL_R*3) {
+        tracking = true;
+      }
+    }
+
+    function onMove(e) {
+      e.preventDefault();
+      if (!gameRunning || !tracking) return;
+      var pos = getPos(e);
+      toolX = pos.x; toolY = pos.y;
+
+      if (!isInsidePath(toolX, toolY)) {
+        buzz();
+      }
+
+      if (hasReachedEnd(toolX, toolY)) {
+        levelComplete();
+        return;
+      }
+
+      drawScene();
+    }
+
+    function onEnd(e) {
+      e.preventDefault();
+      tracking = false;
+    }
+
+    canvas.addEventListener('touchstart', onStart, { passive:false });
+    canvas.addEventListener('touchmove',  onMove,  { passive:false });
+    canvas.addEventListener('touchend',   onEnd,   { passive:false });
+    canvas.addEventListener('mousedown',  onStart);
+    canvas.addEventListener('mousemove',  onMove);
+    canvas.addEventListener('mouseup',    onEnd);
+
+    // ─────────────────────────────────────────────────────
+    // BUZZ (wall hit)
+    // ─────────────────────────────────────────────────────
+    function buzz() {
+      if (buzzCooldown) return;
+      buzzCooldown = true;
+      lives = Math.max(0, lives - 1);
+      score = Math.max(0, score - 100);
+      updateHUD();
+
+      // Flash
+      var flash = document.getElementById('buzz-flash');
+      flash.classList.add('active');
+      if (navigator.vibrate) navigator.vibrate(120);
+
+      setTimeout(function() {
+        flash.classList.remove('active');
+        buzzCooldown = false;
+        if (lives <= 0) { endTurn(false); }
+      }, 400);
+    }
+
+    function levelComplete() {
+      gameRunning = false;
+      tracking = false;
+      score += 500; // completion bonus
+      updateHUD();
+      setTimeout(function() { endTurn(true); }, 400);
+    }
+
+    function updateHUD() {
+      document.getElementById('hud-score').textContent = score;
+      var hearts = '';
+      for (var i = 0; i < 3; i++) hearts += (i < lives ? '❤️' : '🖤');
+      document.getElementById('hud-lives').textContent = hearts;
+    }
+
+    // ─────────────────────────────────────────────────────
+    // END TURN
+    // ─────────────────────────────────────────────────────
+    function endTurn(completed) {
+      gameRunning = false;
+      var name = turnOrder[currentTurnIndex];
+      roundScores[name] = score + (completed ? 0 : 0);
+      currentTurnIndex++;
+      if (currentTurnIndex >= turnOrder.length) {
+        showRoundResults();
+      } else {
+        showLobby();
+      }
+    }
+
+    // ─────────────────────────────────────────────────────
+    // RESULTS
+    // ─────────────────────────────────────────────────────
+    function showRoundResults() {
+      showScreen('results-screen');
+      var sorted = Object.keys(roundScores).sort(function(a,b){ return roundScores[b]-roundScores[a]; });
+      var list = document.getElementById('res-list');
+      while (list.firstChild) list.removeChild(list.firstChild);
+      var medals = ['🥇','🥈','🥉'];
+      sorted.forEach(function(name, i) {
+        var row = document.createElement('div');
+        row.className = 'res-row' + (i===0?' first':'');
+        var rk=document.createElement('div'); rk.className='res-rank'; rk.textContent=medals[i]||(i+1)+'';
+        var nm=document.createElement('div'); nm.className='res-name'; nm.textContent=name;
+        var sc=document.createElement('div'); sc.className='res-score'; sc.textContent=roundScores[name]+' pts';
+        row.appendChild(rk); row.appendChild(nm); row.appendChild(sc);
+        list.appendChild(row);
+      });
+      if (sorted.length && roundScores[sorted[0]] > 0) spawnConfetti('confetti-res');
+    }
+
+    document.getElementById('btn-see-lb').addEventListener('click', showLeaderboard);
+
+    function showLeaderboard() {
+      showScreen('leaderboard-screen');
+      var sorted = Object.keys(roundScores).sort(function(a,b){ return roundScores[b]-roundScores[a]; });
+      var rows = document.getElementById('lb-rows');
+      while (rows.firstChild) rows.removeChild(rows.firstChild);
+      var medals = ['🥇','🥈','🥉'];
+      sorted.forEach(function(name, i) {
+        var row = document.createElement('div');
+        row.className = 'lb-row'+(i===0?' lb-first':'');
+        var rk=document.createElement('div'); rk.className='lb-rank'; rk.textContent=medals[i]||(i+1)+'';
+        var nm=document.createElement('div'); nm.className='lb-name'; nm.textContent=name;
+        var sc=document.createElement('div'); sc.className='lb-sc'; sc.textContent=roundScores[name]+' pts';
+        row.appendChild(rk); row.appendChild(nm); row.appendChild(sc);
+        rows.appendChild(row);
+      });
+      spawnConfetti('confetti-lb');
+    }
+
+    document.getElementById('btn-play-again').addEventListener('click', function() {
+      currentTurnIndex = 0; roundScores = {};
+      turnOrder = HG.shuffle(players.slice());
+      currentLevel = Math.floor(Math.random() * LEVELS.length);
+      showLobby();
+    });
+
+    // ─────────────────────────────────────────────────────
+    // COUNTDOWN
+    // ─────────────────────────────────────────────────────
+    function doCountdown(name) {
+      return new Promise(function(resolve) {
+        var ov = document.getElementById('countdown-overlay');
+        ov.classList.add('active');
+        document.getElementById('cd-name').textContent = name;
+        var count = 3;
+        document.getElementById('cd-num').textContent = count;
+        var iv = setInterval(function() {
+          count--;
+          var el = document.getElementById('cd-num');
+          if (count === 0) {
+            el.textContent = 'GO!';
+            el.style.animation='none'; void el.offsetWidth; el.style.animation='count-pop 0.6s ease-out';
+          } else if (count < 0) {
+            clearInterval(iv);
+            ov.classList.remove('active');
+            resolve();
+          } else {
+            el.textContent = count;
+            el.style.animation='none'; void el.offsetWidth; el.style.animation='count-pop 0.6s ease-out';
+          }
+        }, 800);
+      });
+    }
+
+    // ─────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+      document.getElementById(id).classList.add('active');
+    }
+    function goBack() { window.location.href = 'index.html'; }
+
+    function spawnConfetti(cid) {
+      var c = document.getElementById(cid);
+      while (c.firstChild) c.removeChild(c.firstChild);
+      var cols=['#F57C00','#FFA726','#69F0AE','#FFD700','#EF9A9A'];
+      for (var i=0;i<50;i++){
+        var p=document.createElement('div'); p.className='confetti-piece';
+        p.style.left=Math.random()*100+'%';
+        p.style.backgroundColor=cols[Math.floor(Math.random()*cols.length)];
+        p.style.animationDuration=(1.5+Math.random()*2)+'s';
+        p.style.animationDelay=Math.random()*0.8+'s';
+        p.style.width=(6+Math.random()*8)+'px'; p.style.height=(6+Math.random()*8)+'px';
+        p.style.borderRadius=Math.random()>0.5?'50%':'2px';
+        c.appendChild(p);
+      }
+    }
+
+    document.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive:false });
+
+    boot();
+  </script>
+</body>
+</html>
