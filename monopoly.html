@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>Monopoly — Property Rush</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+    html, body {
+      width:100%; height:100%; overflow:hidden;
+      font-family:'Fredoka','Arial Rounded MT Bold',Arial,sans-serif;
+      background:#0d1f0d; color:#fff;
+      touch-action:manipulation;
+    }
+    .screen { display:none; position:absolute; inset:0; flex-direction:column; align-items:center; }
+    .screen.active { display:flex; }
+
+    .btn { padding:16px 40px; border:none; border-radius:50px; font-size:18px; font-weight:700;
+           font-family:inherit; text-transform:uppercase; letter-spacing:1px; cursor:pointer; transition:transform 0.12s; }
+    .btn:active { transform:scale(0.95); }
+    .btn-green  { background:linear-gradient(135deg,#2E7D32,#1B5E20); color:#fff; box-shadow:0 6px 20px rgba(0,0,0,0.4); }
+    .btn-red    { background:linear-gradient(135deg,#C62828,#B71C1C); color:#fff; box-shadow:0 6px 20px rgba(0,0,0,0.4); }
+    .btn-gold   { background:linear-gradient(135deg,#F9A825,#F57F17); color:#1a1a1a; box-shadow:0 6px 20px rgba(0,0,0,0.3); }
+    .btn-ghost  { background:rgba(255,255,255,0.1); color:#fff; border:2px solid rgba(255,255,255,0.25); font-size:14px; padding:12px 28px; }
+
+    /* ── LOBBY ── */
+    #lobby-screen {
+      background:radial-gradient(ellipse at top,#1a3a1a,#0d1f0d 70%);
+      justify-content:center; gap:18px; padding:40px 24px; text-align:center; overflow-y:auto;
+    }
+    .mono-logo { font-size:36px; font-weight:700; color:#4CAF50; paint-order:stroke fill; -webkit-text-stroke:2px #1a1a1a; letter-spacing:2px; }
+    .mono-sub  { font-size:12px; color:#A5D6A7; letter-spacing:3px; text-transform:uppercase; margin-top:-8px; }
+    .turn-badge {
+      background:rgba(255,255,255,0.06); border:2px solid rgba(76,175,80,0.4);
+      border-radius:20px; padding:18px 28px; text-align:center; width:100%; max-width:320px;
+    }
+    .turn-badge .tl { font-size:12px; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px; }
+    .turn-badge .tn { font-size:28px; font-weight:700; color:#A5D6A7; margin-top:4px; }
+    .standings { width:100%; max-width:320px; }
+    .st-row {
+      display:flex; align-items:center; gap:10px; padding:9px 14px;
+      border-radius:12px; background:rgba(255,255,255,0.05); margin-bottom:6px;
+    }
+    .st-name { flex:1; font-size:15px; font-weight:700; }
+    .st-cash { font-size:13px; color:#A5D6A7; }
+    .st-props { font-size:12px; color:rgba(255,255,255,0.4); }
+    .st-jail  { font-size:11px; color:#EF9A9A; margin-left:4px; }
+
+    /* ── GAME ── */
+    #game-screen {
+      background:#0d1f0d; justify-content:flex-start; padding:0;
+    }
+    .game-hud {
+      width:100%; padding:14px 20px 10px;
+      display:flex; align-items:center; justify-content:space-between;
+      background:rgba(0,0,0,0.3); flex-shrink:0;
+    }
+    .hud-name  { font-size:17px; font-weight:700; color:#A5D6A7; }
+    .hud-cash  { font-size:22px; font-weight:700; color:#FFD700; }
+    .hud-props { font-size:13px; color:rgba(255,255,255,0.5); margin-top:1px; }
+
+    .card-area {
+      flex:1; width:100%; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; padding:16px 24px; gap:16px;
+      perspective:800px;
+    }
+
+    /* Card */
+    .card-wrap { width:100%; max-width:320px; height:220px; position:relative; }
+    .card-inner {
+      width:100%; height:100%;
+      transform-style:preserve-3d;
+      transition:transform 0.55s cubic-bezier(0.4,0,0.2,1);
+      position:relative;
+    }
+    .card-inner.flipped { transform:rotateY(180deg); }
+    .card-face {
+      position:absolute; inset:0; border-radius:20px;
+      backface-visibility:hidden; -webkit-backface-visibility:hidden;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:20px; text-align:center; overflow:hidden;
+    }
+    .card-back {
+      background:linear-gradient(135deg,#1B5E20,#2E7D32);
+      border:3px solid rgba(165,214,167,0.3);
+      box-shadow:0 8px 32px rgba(0,0,0,0.5);
+    }
+    .card-back-pattern {
+      font-size:80px; opacity:0.25; line-height:1;
+    }
+    .card-back-label {
+      position:absolute; bottom:16px; font-size:12px;
+      letter-spacing:3px; text-transform:uppercase; color:rgba(255,255,255,0.4);
+    }
+    .card-front {
+      transform:rotateY(180deg);
+      box-shadow:0 8px 32px rgba(0,0,0,0.5);
+      border:3px solid rgba(255,255,255,0.15);
+    }
+    .card-type-label {
+      font-size:10px; letter-spacing:2px; text-transform:uppercase;
+      color:rgba(255,255,255,0.6); margin-bottom:6px;
+    }
+    .card-icon  { font-size:40px; margin-bottom:8px; line-height:1; }
+    .card-title { font-size:20px; font-weight:700; line-height:1.2; margin-bottom:4px; }
+    .card-detail { font-size:14px; color:rgba(255,255,255,0.7); line-height:1.4; }
+    .card-amount { font-size:28px; font-weight:700; margin-top:8px; }
+    .card-amount.plus  { color:#69F0AE; }
+    .card-amount.minus { color:#EF9A9A; }
+    .prop-color-bar {
+      position:absolute; top:0; left:0; right:0; height:10px; border-radius:17px 17px 0 0;
+    }
+
+    /* Action buttons */
+    .card-actions {
+      display:flex; gap:12px; width:100%; max-width:320px; justify-content:center;
+    }
+    .card-actions .btn { flex:1; padding:14px 0; font-size:16px; }
+
+    /* Draw button */
+    .draw-btn-wrap { width:100%; max-width:320px; }
+    .btn-draw {
+      width:100%; padding:20px; background:linear-gradient(135deg,#2E7D32,#1B5E20);
+      border:none; border-radius:20px; font-size:22px; font-weight:700;
+      font-family:inherit; color:#fff; cursor:pointer;
+      box-shadow:0 6px 24px rgba(46,125,50,0.5);
+      transition:transform 0.12s, box-shadow 0.12s;
+      letter-spacing:1px;
+    }
+    .btn-draw:active { transform:scale(0.96); box-shadow:0 2px 8px rgba(46,125,50,0.4); }
+    .btn-draw:disabled { background:rgba(255,255,255,0.1); box-shadow:none; color:rgba(255,255,255,0.3); }
+
+    /* Properties sheet */
+    .props-toggle {
+      font-size:13px; color:rgba(255,255,255,0.45); text-decoration:underline;
+      cursor:pointer; padding:4px; background:none; border:none; font-family:inherit;
+    }
+    .props-sheet {
+      position:fixed; inset:0; z-index:80;
+      background:rgba(0,0,0,0.75); display:none;
+      align-items:flex-end; justify-content:center;
+    }
+    .props-sheet.open { display:flex; }
+    .props-panel {
+      background:#1a2a1a; border-radius:24px 24px 0 0;
+      padding:20px; width:100%; max-width:480px;
+      max-height:70vh; overflow-y:auto;
+    }
+    .props-panel h3 { font-size:18px; font-weight:700; color:#A5D6A7; margin-bottom:14px; text-align:center; }
+    .prop-row {
+      display:flex; align-items:center; gap:10px; padding:10px 12px;
+      border-radius:12px; background:rgba(255,255,255,0.06); margin-bottom:6px;
+    }
+    .prop-dot  { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+    .prop-name { flex:1; font-size:14px; font-weight:700; }
+    .prop-info { font-size:12px; color:rgba(255,255,255,0.5); text-align:right; }
+    .prop-dev  { font-size:10px; color:#FFD700; margin-top:1px; }
+    .close-sheet { display:block; width:100%; padding:14px; margin-top:12px;
+                   background:rgba(255,255,255,0.08); border:none; border-radius:12px;
+                   color:#fff; font-size:15px; font-family:inherit; cursor:pointer; }
+
+    /* ── JAIL NOTICE ── */
+    #jail-screen {
+      background:rgba(0,0,0,0.9); justify-content:center; gap:20px; text-align:center; padding:40px;
+    }
+    .jail-icon  { font-size:80px; }
+    .jail-title { font-size:28px; font-weight:700; color:#EF9A9A; }
+    .jail-sub   { font-size:16px; color:rgba(255,255,255,0.6); }
+
+    /* ── BUST ── */
+    #bust-screen {
+      background:rgba(180,0,0,0.15); justify-content:center; gap:16px;
+      text-align:center; padding:40px;
+    }
+    .bust-icon  { font-size:72px; }
+    .bust-name  { font-size:28px; font-weight:700; color:#EF9A9A; }
+    .bust-sub   { font-size:15px; color:rgba(255,255,255,0.6); max-width:280px; line-height:1.5; }
+
+    /* ── RESULTS ── */
+    #results-screen {
+      background:radial-gradient(ellipse at top,#1a3a1a,#0d1f0d 70%);
+      justify-content:center; gap:16px; padding:40px 24px; text-align:center; overflow-y:auto;
+    }
+    .res-title { font-size:28px; font-weight:700; color:#69F0AE; paint-order:stroke fill; -webkit-text-stroke:1.5px #1a1a1a; }
+    .res-list  { width:100%; max-width:340px; }
+    .res-row   { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:14px; background:rgba(255,255,255,0.06); margin-bottom:8px; }
+    .res-row.first { background:rgba(105,240,174,0.15); border:2px solid rgba(105,240,174,0.35); }
+    .res-rank  { font-size:22px; width:28px; text-align:center; flex-shrink:0; }
+    .res-name  { flex:1; font-size:16px; font-weight:700; text-align:left; }
+    .res-score { font-size:13px; color:#A5D6A7; text-align:right; line-height:1.4; }
+
+    /* Confetti */
+    .confetti-container { position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:5; }
+    .confetti-piece { position:absolute; top:-20px; animation:confetti-fall linear forwards; }
+    @keyframes confetti-fall { 0%{transform:translateY(0) rotate(0deg);opacity:1;} 100%{transform:translateY(110vh) rotate(720deg);opacity:0;} }
+
+    /* Cash delta toast */
+    .cash-toast {
+      position:fixed; top:70px; right:20px; z-index:90;
+      font-size:22px; font-weight:700; pointer-events:none;
+      animation:toast-rise 1.4s ease-out forwards;
+    }
+    @keyframes toast-rise { 0%{opacity:1;transform:translateY(0);} 100%{opacity:0;transform:translateY(-40px);} }
+  </style>
+</head>
+<body>
+
+  <!-- Lobby -->
+  <div id="lobby-screen" class="screen active">
+    <div class="mono-logo">MONOPOLY</div>
+    <div class="mono-sub">Property Rush</div>
+    <div class="turn-badge">
+      <div class="tl">Up next</div>
+      <div class="tn" id="lobby-name">Player 1</div>
+      <div class="tl" id="lobby-sub">Turn 1 of 1</div>
+    </div>
+    <div class="standings" id="lobby-standings"></div>
+    <button class="btn btn-green" id="btn-go">Go!</button>
+    <button class="btn btn-ghost" onclick="goBack()" style="margin-top:4px;">Menu</button>
+  </div>
+
+  <!-- Game -->
+  <div id="game-screen" class="screen">
+    <div class="game-hud">
+      <div>
+        <div class="hud-name"  id="hud-name">Player 1</div>
+        <div class="hud-props" id="hud-props">0 properties</div>
+      </div>
+      <div class="hud-cash" id="hud-cash">₩1,500</div>
+    </div>
+
+    <div class="card-area">
+      <div class="card-wrap">
+        <div class="card-inner" id="card-inner">
+          <div class="card-face card-back">
+            <div class="card-back-pattern">?</div>
+            <div class="card-back-label">Draw your card</div>
+          </div>
+          <div class="card-face card-front" id="card-front">
+            <!-- filled dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="card-actions" id="card-actions" style="display:none;"></div>
+
+      <div class="draw-btn-wrap">
+        <button class="btn-draw" id="btn-draw">Draw Card</button>
+      </div>
+
+      <button class="props-toggle" id="btn-props-toggle">View my properties</button>
+    </div>
+  </div>
+
+  <!-- Jail notice -->
+  <div id="jail-screen" class="screen">
+    <div class="jail-icon">🚔</div>
+    <div class="jail-title" id="jail-player-name">Player 1</div>
+    <div class="jail-sub">Goes to Jail! Skip one turn.</div>
+    <button class="btn btn-ghost" id="btn-jail-ok" style="margin-top:12px;">OK</button>
+  </div>
+
+  <!-- Bust screen -->
+  <div id="bust-screen" class="screen">
+    <div class="bust-icon">💸</div>
+    <div class="bust-name" id="bust-name">Player 1</div>
+    <div class="bust-sub">is bankrupt! Their properties go back to the market.</div>
+    <button class="btn btn-ghost" id="btn-bust-ok" style="margin-top:16px;">Continue</button>
+  </div>
+
+  <!-- Results -->
+  <div id="results-screen" class="screen">
+    <div class="confetti-container" id="confetti-res"></div>
+    <div class="res-title">🏆 Final Standings</div>
+    <div class="res-list" id="res-list"></div>
+    <button class="btn btn-green" id="btn-play-again" style="margin-top:8px;">Play Again</button>
+    <button class="btn btn-ghost" onclick="goBack()" style="margin-top:8px;">Menu</button>
+  </div>
+
+  <!-- Properties sheet -->
+  <div class="props-sheet" id="props-sheet" onclick="closePropsSheet(event)">
+    <div class="props-panel">
+      <h3>My Properties</h3>
+      <div id="props-list"></div>
+      <button class="close-sheet" onclick="closePropsSheet()">Close</button>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+  // ─────────────────────────────────────────────────────────────
+  // PROPERTY DATA — Nesquik edition, 3× standard rent values
+  // ─────────────────────────────────────────────────────────────
+  var PROP_DEFS = [
+    // Brown  (devCost ₩50)
+    { name:'Cereal Bowl Road',      hex:'#795548', price:60,  rent:6,   devRent:90,   devCost:50  },
+    { name:'Milk Splash Avenue',    hex:'#795548', price:60,  rent:12,  devRent:180,  devCost:50  },
+    // Light Blue  (devCost ₩50)
+    { name:'Cocoa Puddle Lane',     hex:'#4FC3F7', price:100, rent:18,  devRent:270,  devCost:50  },
+    { name:'Bunny Hop Street',      hex:'#4FC3F7', price:100, rent:18,  devRent:270,  devCost:50  },
+    { name:'Nesquik Corner',        hex:'#4FC3F7', price:120, rent:24,  devRent:300,  devCost:50  },
+    // Pink  (devCost ₩100)
+    { name:'Choco-Storm Avenue',    hex:'#F06292', price:140, rent:30,  devRent:450,  devCost:100 },
+    { name:'Family Table Street',   hex:'#F06292', price:140, rent:30,  devRent:450,  devCost:100 },
+    { name:'Breakfast Club Road',   hex:'#F06292', price:160, rent:36,  devRent:540,  devCost:100 },
+    // Orange  (devCost ₩100)
+    { name:'Chocolate Rush Road',   hex:'#FF7043', price:180, rent:42,  devRent:600,  devCost:100 },
+    { name:'Bunny Trail Boulevard', hex:'#FF7043', price:180, rent:42,  devRent:600,  devCost:100 },
+    { name:'Frothy Mug Lane',       hex:'#FF7043', price:200, rent:48,  devRent:660,  devCost:100 },
+    // Red  (devCost ₩150)
+    { name:'Powder Pack Place',     hex:'#E53935', price:220, rent:54,  devRent:750,  devCost:150 },
+    { name:'Cocoa Bean Street',     hex:'#E53935', price:220, rent:54,  devRent:750,  devCost:150 },
+    { name:'Choco Swirl Drive',     hex:'#E53935', price:240, rent:60,  devRent:900,  devCost:150 },
+    // Yellow  (devCost ₩150)
+    { name:'Golden Mug Avenue',     hex:'#FDD835', price:260, rent:66,  devRent:990,  devCost:150 },
+    { name:'Sunny Bunny Street',    hex:'#FDD835', price:260, rent:66,  devRent:990,  devCost:150 },
+    { name:'Nesquik Nation Hill',   hex:'#FDD835', price:280, rent:66,  devRent:1080, devCost:150 },
+    // Green  (devCost ₩200)
+    { name:'Ultimate Choco Tower',  hex:'#43A047', price:300, rent:78,  devRent:1170, devCost:200 },
+    { name:'Rabbit Warren Road',    hex:'#43A047', price:300, rent:78,  devRent:1170, devCost:200 },
+    { name:'Chocolate Kingdom Way', hex:'#43A047', price:320, rent:78,  devRent:1170, devCost:200 },
+    // Dark Blue  (devCost ₩200)
+    { name:'Nesquik Palace',        hex:'#1565C0', price:350, rent:105, devRent:1500, devCost:200 },
+    { name:'Nesquik HQ',            hex:'#1565C0', price:400, rent:150, devRent:1800, devCost:200 },
+  ];
+
+  // Card backgrounds by type
+  var CARD_BG = {
+    property: '#1B3A1B',
+    rent:     '#3A0000',
+    go:       '#1A2A00',
+    jail:     '#1A1A3A',
+    tax:      '#2A1A00',
+    bonus:    '#1A2A2A',
+    build:    '#2A2A00',
+  };
+
+  // ─────────────────────────────────────────────────────────────
+  // GAME STATE
+  // ─────────────────────────────────────────────────────────────
+  var players     = [];   // [{ name, cash, jailed }]
+  var properties  = [];   // live copies of PROP_DEFS + { owner:null, developed:false }
+  var activeIdxs  = [];   // indices into players[] still in game
+  var turnPtr     = 0;    // index into activeIdxs
+  var cardDrawn   = false;
+  var resolving   = false;
+
+  var STARTING_CASH = 1500;
+
+  function makeProperties() {
+    return PROP_DEFS.map(function(d) {
+      return Object.assign({}, d, { owner: null, developed: false });
+    });
+  }
+
+  function currentPlayer() { return players[activeIdxs[turnPtr]]; }
+
+  // ─────────────────────────────────────────────────────────────
+  // BOOT
+  // ─────────────────────────────────────────────────────────────
+  function boot() {
+    var names = HG.getPlayers();
+    if (!names.length) names = ['Player 1'];
+    players = names.map(function(n) {
+      return { name: n, cash: STARTING_CASH, jailed: false };
+    });
+    properties = makeProperties();
+    activeIdxs = players.map(function(_, i) { return i; });
+    turnPtr    = 0;
+    showLobby();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // LOBBY
+  // ─────────────────────────────────────────────────────────────
+  function showLobby() {
+    showScreen('lobby-screen');
+    var p = currentPlayer();
+    document.getElementById('lobby-name').textContent = p.name + (p.jailed ? ' 🚔' : '');
+    document.getElementById('lobby-sub').textContent  =
+      'Turn ' + (turnPtr + 1) + ' of ' + activeIdxs.length + ' active players';
+    renderStandings();
+  }
+
+  function renderStandings() {
+    var el = document.getElementById('lobby-standings');
+    while (el.firstChild) el.removeChild(el.firstChild);
+    players.forEach(function(p, i) {
+      var alive = activeIdxs.indexOf(i) !== -1;
+      var row = document.createElement('div');
+      row.className = 'st-row';
+      row.style.opacity = alive ? '1' : '0.35';
+      var nm  = document.createElement('span'); nm.className = 'st-name'; nm.textContent = p.name;
+      var ca  = document.createElement('span'); ca.className = 'st-cash'; ca.textContent = '₩' + p.cash.toLocaleString();
+      var pr  = document.createElement('span'); pr.className = 'st-props';
+      var cnt = properties.filter(function(q){ return q.owner === p.name; }).length;
+      pr.textContent = cnt + ' 🏠';
+      row.appendChild(nm); row.appendChild(ca); row.appendChild(pr);
+      if (p.jailed) {
+        var jl = document.createElement('span'); jl.className = 'st-jail'; jl.textContent = '🚔';
+        row.appendChild(jl);
+      }
+      if (!alive) {
+        var bk = document.createElement('span'); bk.className = 'st-jail'; bk.textContent = '💀';
+        row.appendChild(bk);
+      }
+      el.appendChild(row);
+    });
+  }
+
+  document.getElementById('btn-go').addEventListener('click', function() {
+    startTurn();
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // TURN
+  // ─────────────────────────────────────────────────────────────
+  function startTurn() {
+    var p = currentPlayer();
+
+    // Jailed: skip turn
+    if (p.jailed) {
+      p.jailed = false;
+      showScreen('jail-screen');
+      document.getElementById('jail-player-name').textContent = p.name + ' is in Jail!';
+      return;
+    }
+
+    cardDrawn  = false;
+    resolving  = false;
+    showScreen('game-screen');
+    updateGameHUD();
+    resetCard();
+    document.getElementById('btn-draw').disabled = false;
+    document.getElementById('card-actions').style.display = 'none';
+  }
+
+  document.getElementById('btn-jail-ok').addEventListener('click', function() {
+    advanceTurn();
+  });
+
+  function updateGameHUD() {
+    var p = currentPlayer();
+    document.getElementById('hud-name').textContent  = p.name;
+    document.getElementById('hud-cash').textContent  = '₩' + p.cash.toLocaleString();
+    var cnt = properties.filter(function(q){ return q.owner === p.name; }).length;
+    document.getElementById('hud-props').textContent = cnt + (cnt === 1 ? ' property' : ' properties');
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // CARD GENERATION
+  // ─────────────────────────────────────────────────────────────
+  function generateCard() {
+    var p = currentPlayer();
+    var ownedByOthers = properties.filter(function(q) {
+      return q.owner && q.owner !== p.name;
+    });
+    var unowned = properties.filter(function(q) { return !q.owner; });
+    var myUndeveloped = properties.filter(function(q) {
+      return q.owner === p.name && !q.developed;
+    });
+
+    var pool = [];
+
+    // Standard chance cards — always available
+    pool.push({ type:'go' });
+    pool.push({ type:'go' });
+    pool.push({ type:'bonus', amount:50,  reason:'Happy Birthday! Collect ₩50' });
+    pool.push({ type:'bonus', amount:100, reason:'Bank error in your favour' });
+    pool.push({ type:'bonus', amount:200, reason:'You passed GO — Collect ₩200' });
+    pool.push({ type:'tax',   amount:75,  reason:'Income Tax. Pay ₩75.' });
+    pool.push({ type:'tax',   amount:100, reason:'Street repairs. Pay ₩100.' });
+    pool.push({ type:'tax',   amount:150, reason:'Speeding fine. Pay ₩150.' });
+    pool.push({ type:'jail' });
+
+    // Buy opportunities — up to 4 random unowned properties
+    var buyPool = HG.shuffle(unowned.slice()).slice(0, 4);
+    buyPool.forEach(function(prop) {
+      pool.push({ type:'property', prop: prop });
+    });
+
+    // Rent cards — weighted by number of other-owned props
+    ownedByOthers.forEach(function(prop) {
+      pool.push({ type:'rent', prop: prop });
+      if (prop.developed) pool.push({ type:'rent', prop: prop }); // extra weight
+    });
+
+    // Build opportunity — if player has undeveloped properties and cash
+    if (myUndeveloped.length && p.cash >= myUndeveloped[0].devCost) {
+      pool.push({ type:'build' });
+      pool.push({ type:'build' }); // slightly higher weight
+    }
+
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // DRAW
+  // ─────────────────────────────────────────────────────────────
+  document.getElementById('btn-draw').addEventListener('click', function() {
+    if (cardDrawn || resolving) return;
+    cardDrawn = true;
+    document.getElementById('btn-draw').disabled = true;
+
+    var card = generateCard();
+    renderCardFront(card);
+
+    // Flip
+    setTimeout(function() {
+      document.getElementById('card-inner').classList.add('flipped');
+      setTimeout(function() { resolveCard(card); }, 300);
+    }, 120);
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // CARD RENDERING
+  // ─────────────────────────────────────────────────────────────
+  function resetCard() {
+    var inner = document.getElementById('card-inner');
+    inner.style.transition = 'none';
+    inner.classList.remove('flipped');
+    void inner.offsetWidth; // reflow
+    inner.style.transition = '';
+  }
+
+  function renderCardFront(card) {
+    var front = document.getElementById('card-front');
+    while (front.firstChild) front.removeChild(front.firstChild);
+    front.style.background = CARD_BG[card.type] || '#1a2a1a';
+
+    var typeLabel = document.createElement('div');
+    typeLabel.className = 'card-type-label';
+
+    var icon  = document.createElement('div'); icon.className = 'card-icon';
+    var title = document.createElement('div'); title.className = 'card-title';
+    var detail= document.createElement('div'); detail.className = 'card-detail';
+    var amount= document.createElement('div'); amount.className = 'card-amount';
+
+    if (card.type === 'property') {
+      var bar = document.createElement('div');
+      bar.className = 'prop-color-bar';
+      bar.style.background = card.prop.hex;
+      front.appendChild(bar);
+      typeLabel.textContent = '🏘 For Sale';
+      icon.textContent = '🏠';
+      title.textContent = card.prop.name;
+      detail.textContent = 'Rent: ₩' + card.prop.rent + ' · Dev: ₩' + card.prop.devRent;
+      amount.textContent = '₩' + card.prop.price;
+      amount.classList.add('minus');
+    } else if (card.type === 'rent') {
+      var rentOwed = card.prop.developed ? card.prop.devRent : card.prop.rent;
+      typeLabel.textContent = '💸 Rent Due';
+      icon.textContent = '😬';
+      title.textContent = card.prop.name;
+      detail.textContent = 'Owner: ' + card.prop.owner + (card.prop.developed ? ' (developed)' : '');
+      amount.textContent = '-₩' + rentOwed;
+      amount.classList.add('minus');
+    } else if (card.type === 'go') {
+      typeLabel.textContent = '🚦 Pass GO';
+      icon.textContent = '🎉';
+      title.textContent = 'Collect ₩200';
+      detail.textContent = 'You passed GO!';
+      amount.textContent = '+₩200';
+      amount.classList.add('plus');
+    } else if (card.type === 'jail') {
+      typeLabel.textContent = '🚔 Go to Jail';
+      icon.textContent = '🔒';
+      title.textContent = 'Go to Jail';
+      detail.textContent = 'Do not pass GO. Skip your next turn.';
+    } else if (card.type === 'tax') {
+      typeLabel.textContent = '🏛 Chance';
+      icon.textContent = '📋';
+      title.textContent = card.reason;
+      amount.textContent = '-₩' + card.amount;
+      amount.classList.add('minus');
+    } else if (card.type === 'bonus') {
+      typeLabel.textContent = '🎊 Community Chest';
+      icon.textContent = '💰';
+      title.textContent = card.reason;
+      amount.textContent = '+₩' + card.amount;
+      amount.classList.add('plus');
+    } else if (card.type === 'build') {
+      typeLabel.textContent = '🏗 Build Opportunity';
+      icon.textContent = '⬆️';
+      title.textContent = 'Develop a property!';
+      detail.textContent = 'Pick one of your properties to develop and charge higher rent.';
+    }
+
+    front.appendChild(typeLabel);
+    front.appendChild(icon);
+    front.appendChild(title);
+    front.appendChild(detail);
+    if (amount.textContent) front.appendChild(amount);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // CARD RESOLUTION
+  // ─────────────────────────────────────────────────────────────
+  function resolveCard(card) {
+    var p = currentPlayer();
+    var actions = document.getElementById('card-actions');
+    while (actions.firstChild) actions.removeChild(actions.firstChild);
+
+    if (card.type === 'property') {
+      // Can player afford it?
+      if (p.cash >= card.prop.price) {
+        actions.style.display = 'flex';
+        var btnBuy = document.createElement('button');
+        btnBuy.className = 'btn btn-green';
+        btnBuy.textContent = 'Buy ₩' + card.prop.price;
+        var btnPass = document.createElement('button');
+        btnPass.className = 'btn btn-ghost';
+        btnPass.textContent = 'Pass';
+        btnBuy.addEventListener('click', function() {
+          changeCash(p, -card.prop.price);
+          card.prop.owner = p.name;
+          actions.style.display = 'none';
+          updateGameHUD();
+          showCashToast('+🏠');
+          setTimeout(function() { advanceTurn(); }, 600);
+        });
+        btnPass.addEventListener('click', function() {
+          actions.style.display = 'none';
+          setTimeout(function() { advanceTurn(); }, 300);
+        });
+        actions.appendChild(btnBuy);
+        actions.appendChild(btnPass);
+      } else {
+        // Can't afford — auto-pass
+        setTimeout(function() { advanceTurn(); }, 1800);
+      }
+
+    } else if (card.type === 'rent') {
+      var rentOwed = card.prop.developed ? card.prop.devRent : card.prop.rent;
+      var ownerPlayer = players.find(function(x){ return x.name === card.prop.owner; });
+      changeCash(p, -rentOwed);
+      if (ownerPlayer) changeCash(ownerPlayer, rentOwed);
+      updateGameHUD();
+      showCashToast('-₩' + rentOwed);
+      setTimeout(function() { checkBankruptcy(p, function() { advanceTurn(); }); }, 1600);
+
+    } else if (card.type === 'go') {
+      changeCash(p, 200);
+      updateGameHUD();
+      showCashToast('+₩200');
+      setTimeout(function() { advanceTurn(); }, 1600);
+
+    } else if (card.type === 'jail') {
+      p.jailed = true;
+      setTimeout(function() { advanceTurn(); }, 1800);
+
+    } else if (card.type === 'tax') {
+      changeCash(p, -card.amount);
+      updateGameHUD();
+      showCashToast('-₩' + card.amount);
+      setTimeout(function() { checkBankruptcy(p, function() { advanceTurn(); }); }, 1600);
+
+    } else if (card.type === 'bonus') {
+      changeCash(p, card.amount);
+      updateGameHUD();
+      showCashToast('+₩' + card.amount);
+      setTimeout(function() { advanceTurn(); }, 1600);
+
+    } else if (card.type === 'build') {
+      var canBuild = properties.filter(function(q) {
+        return q.owner === p.name && !q.developed && p.cash >= q.devCost;
+      });
+      if (!canBuild.length) {
+        // Nothing to build (cash dropped) — skip
+        setTimeout(function() { advanceTurn(); }, 1400);
+        return;
+      }
+      actions.style.display = 'flex';
+      actions.style.flexDirection = 'column';
+      canBuild.forEach(function(prop) {
+        var btn = document.createElement('button');
+        btn.className = 'btn btn-gold';
+        btn.style.fontSize = '13px';
+        btn.style.padding = '12px';
+        btn.style.marginBottom = '6px';
+        btn.textContent = prop.name + ' — ₩' + prop.devCost;
+        btn.addEventListener('click', function() {
+          changeCash(p, -prop.devCost);
+          prop.developed = true;
+          actions.style.display = 'none';
+          actions.style.flexDirection = '';
+          updateGameHUD();
+          showCashToast('🏗 Developed!');
+          setTimeout(function() { advanceTurn(); }, 600);
+        });
+        actions.appendChild(btn);
+      });
+      // Skip option
+      var skip = document.createElement('button');
+      skip.className = 'btn btn-ghost';
+      skip.textContent = 'Not now';
+      skip.addEventListener('click', function() {
+        actions.style.display = 'none';
+        actions.style.flexDirection = '';
+        setTimeout(function() { advanceTurn(); }, 300);
+      });
+      actions.appendChild(skip);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────────────────────
+  function changeCash(player, delta) {
+    player.cash = Math.max(0, player.cash + delta);
+  }
+
+  function showCashToast(text) {
+    var t = document.createElement('div');
+    t.className = 'cash-toast';
+    t.textContent = text;
+    t.style.color = text.charAt(0) === '+' ? '#69F0AE' : '#EF9A9A';
+    document.body.appendChild(t);
+    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 1500);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // BANKRUPTCY
+  // ─────────────────────────────────────────────────────────────
+  function checkBankruptcy(player, onContinue) {
+    if (player.cash > 0) { onContinue(); return; }
+
+    // Bust — free properties
+    properties.forEach(function(q) {
+      if (q.owner === player.name) { q.owner = null; q.developed = false; }
+    });
+    // Remove from active
+    var idx = players.indexOf(player);
+    activeIdxs = activeIdxs.filter(function(i){ return i !== idx; });
+    // Adjust turnPtr
+    if (turnPtr >= activeIdxs.length) turnPtr = 0;
+
+    showScreen('bust-screen');
+    document.getElementById('bust-name').textContent = player.name;
+  }
+
+  document.getElementById('btn-bust-ok').addEventListener('click', function() {
+    if (activeIdxs.length <= 1) {
+      showResults();
+    } else {
+      showLobby();
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // ADVANCE TURN
+  // ─────────────────────────────────────────────────────────────
+  function advanceTurn() {
+    if (activeIdxs.length <= 1) { showResults(); return; }
+    turnPtr = (turnPtr + 1) % activeIdxs.length;
+    showLobby();
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // PROPERTIES SHEET
+  // ─────────────────────────────────────────────────────────────
+  document.getElementById('btn-props-toggle').addEventListener('click', function() {
+    var p = currentPlayer();
+    var list = document.getElementById('props-list');
+    while (list.firstChild) list.removeChild(list.firstChild);
+    var mine = properties.filter(function(q){ return q.owner === p.name; });
+    if (!mine.length) {
+      var empty = document.createElement('p');
+      empty.style.cssText = 'text-align:center;color:rgba(255,255,255,0.4);padding:20px;';
+      empty.textContent = 'You own no properties yet.';
+      list.appendChild(empty);
+    } else {
+      mine.forEach(function(prop) {
+        var row = document.createElement('div'); row.className = 'prop-row';
+        var dot = document.createElement('div'); dot.className = 'prop-dot'; dot.style.background = prop.hex;
+        var nm  = document.createElement('div'); nm.className = 'prop-name'; nm.textContent = prop.name;
+        var inf = document.createElement('div'); inf.className = 'prop-info';
+        var rentLine = document.createElement('div');
+        rentLine.textContent = 'Rent: ₩' + (prop.developed ? prop.devRent : prop.rent);
+        var devLine = document.createElement('div'); devLine.className = 'prop-dev';
+        devLine.textContent = prop.developed ? '🏗 Developed' : '';
+        inf.appendChild(rentLine); inf.appendChild(devLine);
+        row.appendChild(dot); row.appendChild(nm); row.appendChild(inf);
+        list.appendChild(row);
+      });
+    }
+    document.getElementById('props-sheet').classList.add('open');
+  });
+
+  function closePropsSheet(e) {
+    if (!e || e.target === document.getElementById('props-sheet') || e.currentTarget === document.querySelector('.close-sheet')) {
+      document.getElementById('props-sheet').classList.remove('open');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // RESULTS
+  // ─────────────────────────────────────────────────────────────
+  function showResults() {
+    showScreen('results-screen');
+
+    // Score = cash + half the value of owned properties
+    var scored = players.map(function(p) {
+      var propValue = properties
+        .filter(function(q){ return q.owner === p.name; })
+        .reduce(function(sum, q){ return sum + Math.floor(q.price / 2); }, 0);
+      return { name: p.name, cash: p.cash, propValue: propValue, total: p.cash + propValue };
+    });
+    scored.sort(function(a, b){ return b.total - a.total; });
+
+    var list = document.getElementById('res-list');
+    while (list.firstChild) list.removeChild(list.firstChild);
+    var medals = ['🥇','🥈','🥉'];
+    scored.forEach(function(s, i) {
+      var row = document.createElement('div');
+      row.className = 'res-row' + (i === 0 ? ' first' : '');
+      var rk = document.createElement('div'); rk.className = 'res-rank'; rk.textContent = medals[i] || (i+1)+'';
+      var nm = document.createElement('div'); nm.className = 'res-name'; nm.textContent = s.name;
+      var sc = document.createElement('div'); sc.className = 'res-score';
+      sc.textContent = '₩' + s.cash.toLocaleString() + ' cash\n+₩' + s.propValue + ' props';
+      sc.style.whiteSpace = 'pre';
+      row.appendChild(rk); row.appendChild(nm); row.appendChild(sc);
+      list.appendChild(row);
+    });
+
+    spawnConfetti('confetti-res');
+  }
+
+  document.getElementById('btn-play-again').addEventListener('click', function() {
+    properties = makeProperties();
+    players.forEach(function(p) { p.cash = STARTING_CASH; p.jailed = false; });
+    activeIdxs = players.map(function(_, i) { return i; });
+    turnPtr = 0;
+    showLobby();
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // UTILS
+  // ─────────────────────────────────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+
+  function goBack() { window.location.href = 'index.html'; }
+
+  function spawnConfetti(cid) {
+    var c = document.getElementById(cid);
+    while (c.firstChild) c.removeChild(c.firstChild);
+    var cols = ['#4CAF50','#A5D6A7','#FFD700','#FF7043','#69F0AE','#FDD835'];
+    for (var i = 0; i < 60; i++) {
+      var p = document.createElement('div'); p.className = 'confetti-piece';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.backgroundColor = cols[Math.floor(Math.random() * cols.length)];
+      p.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+      p.style.animationDelay = Math.random() * 0.8 + 's';
+      p.style.width  = (6 + Math.random() * 8) + 'px';
+      p.style.height = (6 + Math.random() * 8) + 'px';
+      p.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      c.appendChild(p);
+    }
+  }
+
+  boot();
+  </script>
+</body>
+</html>
