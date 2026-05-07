@@ -53,13 +53,38 @@
       background:#0d1f0d; justify-content:flex-start; padding:0;
     }
     .game-hud {
-      width:100%; padding:14px 20px 10px;
+      width:100%; padding:10px 16px 8px;
       display:flex; align-items:center; justify-content:space-between;
       background:rgba(0,0,0,0.3); flex-shrink:0;
     }
-    .hud-name  { font-size:17px; font-weight:700; color:#A5D6A7; }
-    .hud-cash  { font-size:22px; font-weight:700; color:#FFD700; }
-    .hud-props { font-size:13px; color:rgba(255,255,255,0.5); margin-top:1px; }
+    .hud-name  { font-size:16px; font-weight:700; color:#A5D6A7; }
+    .hud-cash  { font-size:20px; font-weight:700; color:#FFD700; }
+    .hud-props { font-size:12px; color:rgba(255,255,255,0.5); margin-top:1px; }
+
+    /* All-players strip */
+    .all-players-strip {
+      width:100%; overflow-x:auto; padding:8px 14px 4px;
+      display:flex; gap:8px; flex-shrink:0;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+      border-bottom:1px solid rgba(255,255,255,0.07);
+    }
+    .all-players-strip::-webkit-scrollbar { display:none; }
+    .player-chip {
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:12px; padding:6px 12px;
+      display:flex; flex-direction:column; align-items:center;
+      min-width:80px; flex-shrink:0; transition:background 0.2s;
+    }
+    .player-chip.is-current {
+      background:rgba(76,175,80,0.2);
+      border-color:rgba(76,175,80,0.5);
+    }
+    .player-chip.is-bust { opacity:0.3; }
+    .pc-name  { font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; max-width:72px; text-overflow:ellipsis; }
+    .pc-cash  { font-size:15px; font-weight:700; color:#FFD700; }
+    .pc-props { font-size:10px; color:rgba(255,255,255,0.45); margin-top:1px; }
 
     .card-area {
       flex:1; width:100%; display:flex; flex-direction:column;
@@ -230,6 +255,8 @@
       </div>
       <div class="hud-cash" id="hud-cash">₩1,500</div>
     </div>
+
+    <div class="all-players-strip" id="all-players-strip"></div>
 
     <div class="card-area">
       <div class="card-wrap">
@@ -408,6 +435,7 @@
     resolving  = false;
     showScreen('game-screen');
     updateGameHUD();
+    updateAllPlayersStrip();
     resetCard();
     document.getElementById('btn-draw').disabled = false;
     document.getElementById('card-actions').style.display = 'none';
@@ -423,6 +451,26 @@
     document.getElementById('hud-cash').textContent  = '₩' + p.cash.toLocaleString();
     var cnt = properties.filter(function(q){ return q.owner === p.name; }).length;
     document.getElementById('hud-props').textContent = cnt + (cnt === 1 ? ' property' : ' properties');
+    updateAllPlayersStrip();
+  }
+
+  function updateAllPlayersStrip() {
+    var strip = document.getElementById('all-players-strip');
+    if (!strip) return;
+    while (strip.firstChild) strip.removeChild(strip.firstChild);
+    players.forEach(function(player, i) {
+      var alive = activeIdxs.indexOf(i) !== -1;
+      var isCurrent = alive && players[activeIdxs[turnPtr]] === player;
+      var chip = document.createElement('div');
+      chip.className = 'player-chip' + (isCurrent ? ' is-current' : '') + (!alive ? ' is-bust' : '');
+      var nm = document.createElement('div'); nm.className = 'pc-name'; nm.textContent = player.name;
+      var ca = document.createElement('div'); ca.className = 'pc-cash'; ca.textContent = '₩' + player.cash.toLocaleString();
+      var cnt = properties.filter(function(q){ return q.owner === player.name; }).length;
+      var pr = document.createElement('div'); pr.className = 'pc-props';
+      pr.textContent = cnt ? cnt + ' 🏠' : (alive ? '—' : '💀');
+      chip.appendChild(nm); chip.appendChild(ca); chip.appendChild(pr);
+      strip.appendChild(chip);
+    });
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -572,6 +620,25 @@
   }
 
   // ─────────────────────────────────────────────────────────────
+  // NEXT BUTTON — keeps card visible until player taps Next
+  // ─────────────────────────────────────────────────────────────
+  function showNextButton(onNext) {
+    var actions = document.getElementById('card-actions');
+    while (actions.firstChild) actions.removeChild(actions.firstChild);
+    actions.style.display = 'flex';
+    actions.style.flexDirection = '';
+    var btn = document.createElement('button');
+    btn.className = 'btn btn-green';
+    btn.style.width = '100%';
+    btn.textContent = 'Next →';
+    btn.addEventListener('click', function() {
+      actions.style.display = 'none';
+      if (onNext) onNext(); else advanceTurn();
+    });
+    actions.appendChild(btn);
+  }
+
+  // ─────────────────────────────────────────────────────────────
   // CARD RESOLUTION
   // ─────────────────────────────────────────────────────────────
   function resolveCard(card) {
@@ -580,7 +647,6 @@
     while (actions.firstChild) actions.removeChild(actions.firstChild);
 
     if (card.type === 'property') {
-      // Can player afford it?
       if (p.cash >= card.prop.price) {
         actions.style.display = 'flex';
         var btnBuy = document.createElement('button');
@@ -592,20 +658,18 @@
         btnBuy.addEventListener('click', function() {
           changeCash(p, -card.prop.price);
           card.prop.owner = p.name;
-          actions.style.display = 'none';
           updateGameHUD();
-          showCashToast('+🏠');
-          setTimeout(function() { advanceTurn(); }, 600);
+          showCashToast('-₩' + card.prop.price);
+          showNextButton();
         });
         btnPass.addEventListener('click', function() {
-          actions.style.display = 'none';
-          setTimeout(function() { advanceTurn(); }, 300);
+          showNextButton();
         });
         actions.appendChild(btnBuy);
         actions.appendChild(btnPass);
       } else {
-        // Can't afford — auto-pass
-        setTimeout(function() { advanceTurn(); }, 1800);
+        // Can't afford — show Next automatically
+        showNextButton();
       }
 
     } else if (card.type === 'rent') {
@@ -615,37 +679,36 @@
       if (ownerPlayer) changeCash(ownerPlayer, rentOwed);
       updateGameHUD();
       showCashToast('-₩' + rentOwed);
-      setTimeout(function() { checkBankruptcy(p, function() { advanceTurn(); }); }, 1600);
+      showNextButton(function() { checkBankruptcy(p, advanceTurn); });
 
     } else if (card.type === 'go') {
       changeCash(p, 200);
       updateGameHUD();
       showCashToast('+₩200');
-      setTimeout(function() { advanceTurn(); }, 1600);
+      showNextButton();
 
     } else if (card.type === 'jail') {
       p.jailed = true;
-      setTimeout(function() { advanceTurn(); }, 1800);
+      showNextButton();
 
     } else if (card.type === 'tax') {
       changeCash(p, -card.amount);
       updateGameHUD();
       showCashToast('-₩' + card.amount);
-      setTimeout(function() { checkBankruptcy(p, function() { advanceTurn(); }); }, 1600);
+      showNextButton(function() { checkBankruptcy(p, advanceTurn); });
 
     } else if (card.type === 'bonus') {
       changeCash(p, card.amount);
       updateGameHUD();
       showCashToast('+₩' + card.amount);
-      setTimeout(function() { advanceTurn(); }, 1600);
+      showNextButton();
 
     } else if (card.type === 'build') {
       var canBuild = properties.filter(function(q) {
         return q.owner === p.name && !q.developed && p.cash >= q.devCost;
       });
       if (!canBuild.length) {
-        // Nothing to build (cash dropped) — skip
-        setTimeout(function() { advanceTurn(); }, 1400);
+        showNextButton();
         return;
       }
       actions.style.display = 'flex';
@@ -660,23 +723,16 @@
         btn.addEventListener('click', function() {
           changeCash(p, -prop.devCost);
           prop.developed = true;
-          actions.style.display = 'none';
-          actions.style.flexDirection = '';
           updateGameHUD();
-          showCashToast('🏗 Developed!');
-          setTimeout(function() { advanceTurn(); }, 600);
+          showCashToast('-₩' + prop.devCost + ' 🏗');
+          showNextButton();
         });
         actions.appendChild(btn);
       });
-      // Skip option
       var skip = document.createElement('button');
       skip.className = 'btn btn-ghost';
       skip.textContent = 'Not now';
-      skip.addEventListener('click', function() {
-        actions.style.display = 'none';
-        actions.style.flexDirection = '';
-        setTimeout(function() { advanceTurn(); }, 300);
-      });
+      skip.addEventListener('click', function() { showNextButton(); });
       actions.appendChild(skip);
     }
   }
