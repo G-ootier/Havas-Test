@@ -58,10 +58,8 @@
     .player-pick.p1 { border-color:#FFD700; background:rgba(255,215,0,0.15); }
     .player-pick.p2 { border-color:#E53935; background:rgba(229,57,53,0.15); }
     .player-pick .token {
-      width:36px; height:36px; border-radius:50%; margin:0 auto 8px;
+      width:48px; height:48px; margin:0 auto 8px; object-fit:contain; display:block;
     }
-    .token-yellow { background:radial-gradient(circle at 35% 35%, #FFE082, #FFC107); box-shadow:0 3px 8px rgba(0,0,0,0.3); }
-    .token-red    { background:radial-gradient(circle at 35% 35%, #EF9A9A, #E53935); box-shadow:0 3px 8px rgba(0,0,0,0.3); }
     .player-pick .pick-name { font-size:16px; font-weight:700; }
     .player-pick .pick-hint { font-size:11px; opacity:0.6; margin-top:2px; }
     .vs-label { font-size:22px; font-weight:700; color:#FFD700; paint-order:stroke fill; -webkit-text-stroke:1px #1a1a1a; }
@@ -97,7 +95,7 @@
     .turn-info {
       display:flex; align-items:center; gap:10px;
     }
-    .turn-token { width:28px; height:28px; border-radius:50%; flex-shrink:0; }
+    .turn-token { width:32px; height:32px; flex-shrink:0; object-fit:contain; }
     .turn-name { font-size:18px; font-weight:700; }
     .turn-label { font-size:12px; color:rgba(255,255,255,0.6); }
     .btn-back-sm {
@@ -162,21 +160,17 @@
       -webkit-user-drag:none;
       user-select:none;
     }
-    /* Drop animation on the cell (vertical fall) */
-    .cell.dropping {
-      animation: coin-drop calc(0.08s * var(--drop-rows, 3) + 0.18s) cubic-bezier(0.33, 0, 0.68, 1.4) both;
+    /* Floating coin overlay that falls into the cell (no cell displacement) */
+    .coin-overlay {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      z-index: 20;
+      animation: overlay-fall var(--fall-dur, 0.5s) cubic-bezier(0.33, 0, 0.68, 1.4) both;
     }
-    @keyframes coin-drop {
-      from { transform: translateY(calc(var(--drop-rows, 1) * -100% - calc(var(--drop-rows, 1) * 6px))); }
-      to   { transform: translateY(0); }
-    }
-    /* Spin animation on the img inside (random final angle per coin) */
-    .cell.dropping img {
-      animation: coin-spin calc(0.08s * var(--drop-rows, 3) + 0.18s) cubic-bezier(0.33, 0, 0.68, 1.4) both;
-    }
-    @keyframes coin-spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(var(--final-rot, 180deg)); }
+    @keyframes overlay-fall {
+      from { transform: translateY(var(--fall-from-y, -100px)) rotate(0deg); }
+      to   { transform: translateY(0) rotate(var(--final-rot, 0deg)); }
     }
     .cell.win { animation:win-pulse 0.6s ease-in-out infinite alternate; }
     @keyframes win-pulse {
@@ -204,8 +198,8 @@
     .win-name  { font-size:28px; font-weight:700; }
     .win-sub   { font-size:15px; color:rgba(255,255,255,0.7); }
     .win-token-big {
-      width:60px; height:60px; border-radius:50%;
-      margin:0 auto;
+      width:80px; height:80px;
+      margin:0 auto; object-fit:contain; display:block;
     }
 
     /* draw screen */
@@ -223,13 +217,13 @@
 
     <div class="vs-row">
       <div class="player-pick" id="pick-p1" onclick="openPicker(1)">
-        <div class="token token-yellow"></div>
+        <img class="token" src="Sources/yellow.png?v=3" alt="Yellow coin">
         <div class="pick-name" id="pick-p1-name">Player 1</div>
         <div class="pick-hint">tap to change</div>
       </div>
       <div class="vs-label">VS</div>
       <div class="player-pick" id="pick-p2" onclick="openPicker(2)">
-        <div class="token token-red"></div>
+        <img class="token" src="Sources/red.png?v=3" alt="Red coin">
         <div class="pick-name" id="pick-p2-name">Player 2</div>
         <div class="pick-hint">tap to change</div>
       </div>
@@ -244,7 +238,7 @@
   <div id="game-screen" class="screen">
     <div class="turn-bar">
       <div class="turn-info">
-        <div class="turn-token" id="turn-token"></div>
+        <img class="turn-token" id="turn-token" src="" alt="">
         <div>
           <div class="turn-name" id="turn-name">Player 1</div>
           <div class="turn-label">your turn</div>
@@ -268,7 +262,7 @@
   <!-- Win -->
   <div id="win-screen" class="screen">
     <div class="win-emoji">🏆</div>
-    <div class="win-token-big" id="win-token"></div>
+    <img class="win-token-big" id="win-token" src="" alt="">
     <div class="win-title">Winner!</div>
     <div class="win-name" id="win-name">Player 1</div>
     <div class="win-sub" id="win-sub">connected 4 in a row</div>
@@ -439,32 +433,62 @@
       if (!cell) return;
       var p = state[row][col];
 
-      // Clear any existing coin image
       while (cell.firstChild) cell.removeChild(cell.firstChild);
       cell.className = 'cell' + (p === 1 ? ' p1' : p === 2 ? ' p2' : '');
 
       if (p !== 0) {
-        var img = document.createElement('img');
-        img.src = p === 1 ? 'Sources/yellow.png?v=3' : 'Sources/red.png?v=3';
-        img.alt = '';
-
-        // Random final rotation so every coin lands at a different angle
+        var imgSrc = p === 1 ? 'Sources/yellow.png?v=3' : 'Sources/red.png?v=3';
         var finalRot = Math.floor(Math.random() * 360);
-        cell.style.setProperty('--final-rot', finalRot + 'deg');
 
         if (animate) {
-          cell.style.setProperty('--drop-rows', row + 1);
-          cell.classList.add('dropping');
-          // After animation ends: lock the rotation in place and clean up
-          cell.addEventListener('animationend', function() {
-            cell.classList.remove('dropping');
-            img.style.transform = 'rotate(' + finalRot + 'deg)';
-          }, { once: true });
-        } else {
-          img.style.transform = 'rotate(' + finalRot + 'deg)';
-        }
+          // ── Overlay approach: the board grid stays intact ──
+          // A free-floating img falls from above the board into the target cell.
+          var boardContainer = document.querySelector('.board-wrap > div');
+          var cellRect = cell.getBoundingClientRect();
+          var containerRect = boardContainer.getBoundingClientRect();
 
-        cell.appendChild(img);
+          var cellLeft = cellRect.left - containerRect.left;
+          var cellTop  = cellRect.top  - containerRect.top;
+          var cellW    = cellRect.width;
+
+          // Coin starts just above the board container top (cellW px higher)
+          var fallFromY = -(cellTop + cellW);
+          var duration  = (0.08 * (row + 1) + 0.18);
+
+          var overlay = document.createElement('img');
+          overlay.src = imgSrc;
+          overlay.alt = '';
+          overlay.className = 'coin-overlay';
+          overlay.style.width  = cellW + 'px';
+          overlay.style.height = cellW + 'px';
+          overlay.style.left   = cellLeft + 'px';
+          overlay.style.top    = cellTop  + 'px';
+          overlay.style.setProperty('--fall-from-y', fallFromY + 'px');
+          overlay.style.setProperty('--final-rot', finalRot + 'deg');
+          overlay.style.setProperty('--fall-dur', duration + 's');
+
+          // Keep cell as an empty hole while coin is mid-air
+          cell.className = 'cell';
+          boardContainer.appendChild(overlay);
+
+          overlay.addEventListener('animationend', function() {
+            boardContainer.removeChild(overlay);
+            // Snap actual coin into the cell
+            cell.className = 'cell' + (p === 1 ? ' p1' : p === 2 ? ' p2' : '');
+            var img = document.createElement('img');
+            img.src = imgSrc;
+            img.alt = '';
+            img.style.transform = 'rotate(' + finalRot + 'deg)';
+            cell.appendChild(img);
+          }, { once: true });
+
+        } else {
+          var img = document.createElement('img');
+          img.src = imgSrc;
+          img.alt = '';
+          img.style.transform = 'rotate(' + finalRot + 'deg)';
+          cell.appendChild(img);
+        }
       }
     }
 
@@ -476,10 +500,7 @@
 
     function updateTurnBar() {
       var isP1 = currentPlayer === 1;
-      var tokenEl = document.getElementById('turn-token');
-      tokenEl.style.background = isP1
-        ? 'radial-gradient(circle at 35% 35%, #FFE082, #FFC107)'
-        : 'radial-gradient(circle at 35% 35%, #EF9A9A, #E53935)';
+      document.getElementById('turn-token').src = isP1 ? 'Sources/yellow.png?v=3' : 'Sources/red.png?v=3';
       document.getElementById('turn-name').textContent = isP1 ? p1Name : p2Name;
     }
 
@@ -523,9 +544,7 @@
       var isP1 = currentPlayer === 1;
       var name = isP1 ? p1Name : p2Name;
       document.getElementById('win-name').textContent = name + ' wins!';
-      document.getElementById('win-token').style.background = isP1
-        ? 'radial-gradient(circle at 35% 35%, #FFE082, #FFC107)'
-        : 'radial-gradient(circle at 35% 35%, #EF9A9A, #E53935)';
+      document.getElementById('win-token').src = isP1 ? 'Sources/yellow.png?v=3' : 'Sources/red.png?v=3';
       setTimeout(function() { showScreen('win-screen'); }, 800);
     }
 
