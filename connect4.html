@@ -166,11 +166,29 @@
       pointer-events: none;
       border-radius: 50%;
       z-index: 20;
-      animation: overlay-fall var(--fall-dur, 0.5s) cubic-bezier(0.33, 0, 0.68, 1.4) both;
+      /* linear outer timing — per-keyframe easings control the feel */
+      animation: overlay-fall var(--fall-dur, 0.5s) linear both;
     }
     @keyframes overlay-fall {
-      from { transform: translateY(var(--fall-from-y, -100px)) rotate(0deg); }
-      to   { transform: translateY(0) rotate(var(--final-rot, 0deg)); }
+      /* 0 → 80%: coin accelerates downward, finishes spin on impact */
+      0% {
+        transform: translateY(var(--fall-from-y, -100px)) rotate(0deg);
+        animation-timing-function: cubic-bezier(0.55, 0, 0.75, 0.45);
+      }
+      /* 80%: lands exactly at destination — never goes below this */
+      80% {
+        transform: translateY(0) rotate(var(--final-rot, 0deg));
+        animation-timing-function: cubic-bezier(0.2, 0, 0.4, 1);
+      }
+      /* 90%: bounces UP (like hitting the plastic grid) */
+      90% {
+        transform: translateY(-7px) rotate(var(--final-rot, 0deg));
+        animation-timing-function: cubic-bezier(0.4, 0, 1, 0.6);
+      }
+      /* 100%: settles back to resting position */
+      100% {
+        transform: translateY(0) rotate(var(--final-rot, 0deg));
+      }
     }
     .cell.win { animation:win-pulse 0.6s ease-in-out infinite alternate; }
     @keyframes win-pulse {
