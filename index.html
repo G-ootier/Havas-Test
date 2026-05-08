@@ -149,8 +149,17 @@
     }
 
     /* ── Game select ── */
+    #games-page {
+      background-color: #C62828;
+      background-image:
+        repeating-radial-gradient(
+          circle at 50% 25%,
+          transparent 0px, transparent 44px,
+          rgba(0,0,0,0.055) 44px, rgba(0,0,0,0.055) 46px
+        );
+    }
     #games-screen {
-      padding: 24px 16px 32px;
+      padding: 20px 16px 40px;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -161,9 +170,9 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      margin-bottom:12px;
+      margin-bottom:16px;
     }
-    .hasbro-logo { height:52px; }
+    .hasbro-logo { height:44px; filter:brightness(0) invert(1); }
     .btn-players {
       background:rgba(255,255,255,0.2);
       border:2px solid rgba(255,255,255,0.4);
@@ -173,28 +182,32 @@
       cursor:pointer;
     }
     .hero-title {
-      font-size:38px;
+      font-size:46px;
       font-weight:700;
-      color:#FFD700;
+      color:#fff;
       paint-order:stroke fill;
-      -webkit-text-stroke:3px #1a1a1a;
+      -webkit-text-stroke:3px #7b0000;
       text-align:center;
       line-height:1;
-      margin-bottom:4px;
+      margin-bottom:6px;
       text-transform:uppercase;
+      letter-spacing:1px;
     }
     .hero-sub {
-      font-size:14px;
-      color:rgba(255,255,255,0.75);
-      margin-bottom:20px;
+      font-size:13px;
+      font-weight:700;
+      color:rgba(255,255,255,0.7);
+      margin-bottom:16px;
       text-align:center;
+      text-transform:uppercase;
+      letter-spacing:2px;
     }
     .players-chips {
       display:flex;
       flex-wrap:wrap;
       gap:8px;
       justify-content:center;
-      margin-bottom:24px;
+      margin-bottom:20px;
     }
     .chip {
       background:rgba(255,255,255,0.2);
@@ -205,70 +218,58 @@
       font-weight:600;
     }
 
-    .games-grid {
+    /* ── Stacked game rows ── */
+    .games-list {
+      width:100%; max-width:440px;
+      display:flex; flex-direction:column;
+      gap:12px;
+    }
+    .game-row {
       width:100%;
-      max-width:420px;
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:14px;
-      margin-bottom:14px;
-    }
-    .game-card {
-      border-radius:20px;
-      overflow:hidden;
+      background:#fff;
+      border-radius:18px;
+      padding:14px 18px;
+      display:flex; align-items:center;
       cursor:pointer;
+      box-shadow:0 6px 18px rgba(0,0,0,0.28), 0 2px 4px rgba(0,0,0,0.12);
+      transition:transform 0.12s;
+      overflow:hidden;
       position:relative;
-      aspect-ratio:3/2;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      transition:transform 0.15s;
-      box-shadow:0 6px 20px rgba(0,0,0,0.35);
+      min-height:82px;
     }
-    .game-card:active { transform:scale(0.95); }
-    .game-card img {
-      max-width:80%;
-      max-height:65%;
+    .game-row:active { transform:scale(0.97); }
+    .game-row.gr-soon { opacity:0.55; pointer-events:none; }
+    .gr-content { flex:1; min-width:0; }
+    .gr-brand {
+      font-size:10px; font-weight:700;
+      text-transform:uppercase; letter-spacing:1.5px;
+      margin-bottom:3px;
+    }
+    .gr-brand-monopoly  { color:#C62828; }
+    .gr-brand-connect4  { color:#1565C0; }
+    .gr-brand-cluedo    { color:#6a0dad; }
+    .gr-brand-operation { color:#E65100; }
+    .gr-brand-twister   { color:#e63946; }
+    .gr-title {
+      font-size:22px; font-weight:700;
+      color:#1a1a1a; text-transform:uppercase;
+      line-height:1.1; letter-spacing:0.5px;
+    }
+    .gr-badge {
+      position:absolute; top:8px; right:10px;
+      font-size:9px; font-weight:700; letter-spacing:1px;
+      text-transform:uppercase; color:#999;
+      background:#f0f0f0; border-radius:20px; padding:3px 8px;
+    }
+    .gr-icon {
+      width:68px; height:68px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      margin-left:14px;
+    }
+    .gr-icon img {
+      width:100%; height:100%;
       object-fit:contain;
-      filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));
-    }
-    .game-card .card-label {
-      position:absolute;
-      bottom:8px;
-      left:0; right:0;
-      text-align:center;
-      font-size:11px;
-      font-weight:700;
-      text-transform:uppercase;
-      letter-spacing:1px;
-      opacity:0.8;
-    }
-    .game-card.coming-soon { opacity:0.5; cursor:default; }
-    .game-card.coming-soon::after {
-      content:'COMING SOON';
-      position:absolute;
-      inset:0;
-      background:rgba(0,0,0,0.45);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:12px;
-      font-weight:700;
-      letter-spacing:1px;
-      border-radius:20px;
-    }
-
-    /* card backgrounds */
-    .card-twister  { background:linear-gradient(135deg,#e63946,#c1121f); }
-    .card-connect4 { background:linear-gradient(135deg,#1a1a1a,#3a3a3a); }
-    .card-cluedo   { background:linear-gradient(135deg,#6a0dad,#4a148c); }
-    .card-operation{ background:linear-gradient(135deg,#e65100,#bf360c); }
-    .card-monopoly { background:linear-gradient(135deg,#c62828,#e65100); }
-
-    /* game-card spanning full width (Twister = featured) */
-    .game-card-wide {
-      grid-column: span 2;
-      aspect-ratio:16/7;
+      filter:drop-shadow(0 2px 6px rgba(0,0,0,0.2));
     }
 
     /* ── Language selector ── */
@@ -344,34 +345,55 @@
         </div>
       </div>
       <div class="hero-title">Family<br>Game Time</div>
-      <div class="hero-sub">Pick a game to start</div>
+      <div class="hero-sub">Pick a game</div>
       <div class="players-chips" id="players-chips"></div>
-      <div class="games-grid">
 
-        <!-- Twister — wide featured card -->
-        <div class="game-card card-twister game-card-wide" onclick="goTo('twister.html')">
-          <img src="Sources/e8d2632aea80df26cb4968461f1e3ac6.webp" alt="Twister">
-          <span class="card-label">Finger Edition</span>
+      <div class="games-list">
+
+        <!-- Monopoly -->
+        <div class="game-row" onclick="location.href='monopoly.html'">
+          <div class="gr-content">
+            <div class="gr-brand gr-brand-monopoly">Monopoly</div>
+            <div class="gr-title">Property Rush</div>
+          </div>
+          <div class="gr-icon"><img src="Sources/Monopoly_Brand.svg" alt="Monopoly"></div>
         </div>
 
         <!-- Connect 4 -->
-        <div class="game-card card-connect4" onclick="goTo('connect4.html')">
-          <img src="Sources/Connect_4_2013.webp" alt="Connect 4">
+        <div class="game-row" onclick="goTo('connect4.html')">
+          <div class="gr-content">
+            <div class="gr-brand gr-brand-connect4">Connect 4</div>
+            <div class="gr-title">Infinite Connect 4</div>
+          </div>
+          <div class="gr-icon"><img src="Sources/Connect_4_2013.webp" alt="Connect 4"></div>
         </div>
 
-        <!-- Cluedo -->
-        <div class="game-card card-cluedo coming-soon">
-          <img src="Sources/Cluedo_2023.webp" alt="Cluedo">
+        <!-- Cluedo — coming soon -->
+        <div class="game-row gr-soon">
+          <div class="gr-content">
+            <div class="gr-brand gr-brand-cluedo">Cluedo</div>
+            <div class="gr-title">Who Did It?</div>
+          </div>
+          <div class="gr-icon"><img src="Sources/Cluedo_2023.webp" alt="Cluedo"></div>
+          <div class="gr-badge">Coming Soon</div>
         </div>
 
         <!-- Operation -->
-        <div class="game-card card-operation" onclick="location.href='operation.html'">
-          <img src="Sources/Operation_2012_Logo.webp" alt="Operation">
+        <div class="game-row" onclick="location.href='operation.html'">
+          <div class="gr-content">
+            <div class="gr-brand gr-brand-operation">Operation</div>
+            <div class="gr-title">Steady Hands</div>
+          </div>
+          <div class="gr-icon"><img src="Sources/Operation_2012_Logo.webp" alt="Operation"></div>
         </div>
 
-        <!-- Monopoly -->
-        <div class="game-card card-monopoly" onclick="location.href='monopoly.html'">
-          <img src="Sources/Monopoly_Brand.svg" alt="Monopoly">
+        <!-- Twister -->
+        <div class="game-row" onclick="goTo('twister.html')">
+          <div class="gr-content">
+            <div class="gr-brand gr-brand-twister">Twister</div>
+            <div class="gr-title">Colour Rush</div>
+          </div>
+          <div class="gr-icon"><img src="Sources/e8d2632aea80df26cb4968461f1e3ac6.webp" alt="Twister"></div>
         </div>
 
       </div>
