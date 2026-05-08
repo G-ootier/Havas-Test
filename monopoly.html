@@ -73,18 +73,37 @@
     .player-chip {
       background:rgba(255,255,255,0.06);
       border:1px solid rgba(255,255,255,0.12);
-      border-radius:12px; padding:6px 12px;
+      border-radius:12px; padding:6px 10px;
       display:flex; flex-direction:column; align-items:center;
-      min-width:80px; flex-shrink:0; transition:background 0.2s;
+      min-width:72px; flex-shrink:0; transition:transform 0.25s, background 0.25s, box-shadow 0.25s;
     }
     .player-chip.is-current {
-      background:rgba(76,175,80,0.2);
-      border-color:rgba(76,175,80,0.5);
+      background:rgba(76,175,80,0.22);
+      border:2px solid rgba(76,175,80,0.65);
+      padding:10px 16px;
+      min-width:110px;
+      transform:scale(1.08);
+      transform-origin:center;
+      z-index:2; position:relative;
+      box-shadow:0 4px 16px rgba(76,175,80,0.3);
     }
     .player-chip.is-bust { opacity:0.3; }
-    .pc-name  { font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; max-width:72px; text-overflow:ellipsis; }
-    .pc-cash  { font-size:15px; font-weight:700; color:#FFD700; }
-    .pc-props { font-size:10px; color:rgba(255,255,255,0.45); margin-top:1px; }
+    .pc-name  { font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; max-width:90px; text-overflow:ellipsis; }
+    .player-chip.is-current .pc-name { font-size:13px; }
+    .pc-cash  { font-size:14px; font-weight:700; color:#FFD700; }
+    .player-chip.is-current .pc-cash { font-size:19px; }
+    .pc-props { font-size:10px; color:rgba(255,255,255,0.45); margin-top:2px; }
+    .player-chip.is-current .pc-props { font-size:13px; color:rgba(255,255,255,0.7); }
+
+    /* Flash animation when it becomes a player's turn */
+    @keyframes chip-flash {
+      0%   { box-shadow:0 4px 16px rgba(76,175,80,0.3); border-color:rgba(76,175,80,0.65); }
+      20%  { box-shadow:0 0 0 6px rgba(165,214,167,0.55), 0 0 28px rgba(76,175,80,0.6);
+             border-color:rgba(165,214,167,1); background:rgba(76,175,80,0.5); }
+      65%  { box-shadow:0 0 0 2px rgba(165,214,167,0.2); }
+      100% { box-shadow:0 4px 16px rgba(76,175,80,0.3); border-color:rgba(76,175,80,0.65); }
+    }
+    .player-chip.is-current.flashing { animation:chip-flash 1.1s ease-out; }
 
     .card-area {
       flex:1; width:100%; display:flex; flex-direction:column;
@@ -221,50 +240,6 @@
     .confetti-piece { position:absolute; top:-20px; animation:confetti-fall linear forwards; }
     @keyframes confetti-fall { 0%{transform:translateY(0) rotate(0deg);opacity:1;} 100%{transform:translateY(110vh) rotate(720deg);opacity:0;} }
 
-    /* ── TURN HANDOFF OVERLAY (inside game-screen) ── */
-    .turn-handoff {
-      position:absolute; inset:0; z-index:50;
-      background:linear-gradient(180deg,rgba(10,24,10,0.97) 0%,rgba(13,31,13,0.97) 100%);
-      display:none; flex-direction:column;
-      align-items:center; justify-content:center;
-      gap:14px; padding:36px 28px; text-align:center;
-      transition:opacity 0.25s ease;
-    }
-    .th-avatar {
-      width:76px; height:76px; border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-      font-size:34px; font-weight:700;
-      border:3px solid rgba(165,214,167,0.45);
-      background:rgba(76,175,80,0.18);
-      color:#A5D6A7; margin-bottom:2px;
-    }
-    .th-name {
-      font-size:34px; font-weight:700; color:#A5D6A7;
-      paint-order:stroke fill; -webkit-text-stroke:2px #0d1f0d;
-    }
-    .th-sub { font-size:13px; color:rgba(255,255,255,0.45); letter-spacing:1px; text-transform:uppercase; }
-    .th-standings { width:100%; max-width:320px; display:flex; flex-direction:column; gap:5px; margin:4px 0; }
-    .th-row {
-      display:flex; align-items:center; gap:8px; padding:9px 14px;
-      border-radius:11px; background:rgba(255,255,255,0.05); font-size:14px;
-    }
-    .th-row.th-active { background:rgba(76,175,80,0.22); border:1px solid rgba(76,175,80,0.45); }
-    .th-row-name { flex:1; font-weight:700; text-align:left; }
-    .th-row-arrow { color:#A5D6A7; font-size:16px; }
-    .th-row-cash  { color:#FFD700; }
-    .th-row-props { color:rgba(255,255,255,0.38); font-size:11px; margin-left:4px; }
-    .btn-handoff-draw {
-      width:100%; max-width:300px; padding:22px;
-      background:linear-gradient(135deg,#2E7D32,#1B5E20);
-      border:none; border-radius:20px;
-      font-size:22px; font-weight:700; font-family:inherit;
-      color:#fff; cursor:pointer; letter-spacing:1px;
-      box-shadow:0 8px 28px rgba(46,125,50,0.55);
-      transition:transform 0.12s;
-      margin-top:4px;
-    }
-    .btn-handoff-draw:active { transform:scale(0.96); }
-
     /* Cash delta toast */
     .cash-toast {
       position:fixed; top:70px; right:20px; z-index:90;
@@ -323,15 +298,6 @@
 
       <button class="props-toggle" id="btn-props-toggle">View my properties</button>
     </div>
-
-    <!-- Handoff overlay: fades in between turns, single tap draws -->
-    <div class="turn-handoff" id="turn-handoff">
-      <div class="th-avatar" id="th-avatar">?</div>
-      <div class="th-name" id="th-name"></div>
-      <div class="th-sub">Pass the phone · Your turn!</div>
-      <div class="th-standings" id="th-standings"></div>
-      <button class="btn-handoff-draw" id="btn-handoff-draw">Draw Card 🎲</button>
-    </div>
   </div>
 
   <!-- Jail notice -->
@@ -374,12 +340,13 @@
   // PROPERTY DATA — Nesquik edition, 3× standard rent values
   // ─────────────────────────────────────────────────────────────
   var PROP_DEFS = [
-    { name:'Cereal Bowl Road',    hex:'#795548', price:60,  rent:6,   devRent:90,   devCost:50  },
-    { name:'Milk Splash Avenue',  hex:'#4FC3F7', price:100, rent:18,  devRent:180,  devCost:50  },
-    { name:'Family Table Street', hex:'#F06292', price:140, rent:30,  devRent:300,  devCost:100 },
-    { name:'Choco-Storm Avenue',  hex:'#FF7043', price:200, rent:48,  devRent:450,  devCost:100 },
-    { name:'Nesquik Nation Hill', hex:'#FDD835', price:280, rent:66,  devRent:600,  devCost:150 },
-    { name:'Ultimate Choco Tower',hex:'#1565C0', price:400, rent:150, devRent:800,  devCost:200 },
+    // rent = bare ownership | houseRent = 🏠 tier 1 | hotelRent = 🏨 tier 2 (game-ending)
+    { name:'Cereal Bowl Road',    hex:'#795548', price:60,  rent:6,   houseRent:90,   hotelRent:450,  houseCost:50,  hotelCost:100 },
+    { name:'Milk Splash Avenue',  hex:'#4FC3F7', price:100, rent:18,  houseRent:180,  hotelRent:600,  houseCost:50,  hotelCost:100 },
+    { name:'Family Table Street', hex:'#F06292', price:140, rent:30,  houseRent:300,  hotelRent:850,  houseCost:100, hotelCost:150 },
+    { name:'Choco-Storm Avenue',  hex:'#FF7043', price:200, rent:48,  houseRent:450,  hotelRent:1100, houseCost:100, hotelCost:200 },
+    { name:'Nesquik Nation Hill', hex:'#FDD835', price:280, rent:66,  houseRent:600,  hotelRent:1400, houseCost:150, hotelCost:250 },
+    { name:'Ultimate Choco Tower',hex:'#1565C0', price:400, rent:150, houseRent:800,  hotelRent:2000, houseCost:200, hotelCost:300 },
   ];
 
   // Card backgrounds by type
@@ -407,8 +374,20 @@
 
   function makeProperties() {
     return PROP_DEFS.map(function(d) {
-      return Object.assign({}, d, { owner: null, developed: false });
+      return Object.assign({}, d, { owner: null, tier: 0 }); // 0=bare, 1=house🏠, 2=hotel🏨
     });
+  }
+
+  function getRent(prop) {
+    if (prop.tier === 2) return prop.hotelRent;
+    if (prop.tier === 1) return prop.houseRent;
+    return prop.rent;
+  }
+
+  function tierLabel(prop) {
+    if (prop.tier === 2) return ' (🏨 Hotel)';
+    if (prop.tier === 1) return ' (🏠 House)';
+    return '';
   }
 
   function currentPlayer() { return players[activeIdxs[turnPtr]]; }
@@ -467,13 +446,13 @@
   }
 
   document.getElementById('btn-go').addEventListener('click', function() {
-    startTurn(false); // first turn from lobby — no handoff overlay
+    startTurn();
   });
 
   // ─────────────────────────────────────────────────────────────
   // TURN
   // ─────────────────────────────────────────────────────────────
-  function startTurn(showHandoff) {
+  function startTurn() {
     var p = currentPlayer();
 
     // Jailed: skip turn, show jail notice
@@ -490,57 +469,11 @@
     updateGameHUD();
     updateAllPlayersStrip();
     resetCard();
+    // Update card-back label to show whose turn it is
+    document.querySelector('.card-back-label').textContent = p.name + ' — draw your card';
+    document.getElementById('btn-draw').disabled = false;
     document.getElementById('card-actions').style.display = 'none';
-
-    var handoff = document.getElementById('turn-handoff');
-    if (showHandoff) {
-      // Show handoff overlay — player taps "Draw Card" to start their turn
-      document.getElementById('th-name').textContent   = p.name;
-      document.getElementById('th-avatar').textContent = p.name.charAt(0).toUpperCase();
-      renderHandoffStandings();
-      handoff.style.display  = 'flex';
-      handoff.style.opacity  = '1';
-      document.getElementById('btn-draw').disabled = true;
-    } else {
-      handoff.style.display = 'none';
-      document.getElementById('btn-draw').disabled = false;
-    }
   }
-
-  function renderHandoffStandings() {
-    var el = document.getElementById('th-standings');
-    while (el.firstChild) el.removeChild(el.firstChild);
-    var currentP = currentPlayer();
-    players.forEach(function(p, i) {
-      if (activeIdxs.indexOf(i) === -1) return; // skip bankrupt
-      var isCur = (p === currentP);
-      var row = document.createElement('div');
-      row.className = 'th-row' + (isCur ? ' th-active' : '');
-      var nm = document.createElement('div'); nm.className = 'th-row-name'; nm.textContent = p.name;
-      var arr= document.createElement('div'); arr.className = 'th-row-arrow'; arr.textContent = isCur ? '◀' : '';
-      var ca = document.createElement('div'); ca.className = 'th-row-cash'; ca.textContent = '₩' + p.cash.toLocaleString();
-      var cnt = properties.filter(function(q){ return q.owner === p.name; }).length;
-      var pr = document.createElement('div'); pr.className = 'th-row-props'; pr.textContent = cnt ? cnt + '🏠' : '';
-      row.appendChild(nm); row.appendChild(arr); row.appendChild(ca); row.appendChild(pr);
-      el.appendChild(row);
-    });
-  }
-
-  // Handoff button: fade out overlay + draw card in one tap
-  document.getElementById('btn-handoff-draw').addEventListener('click', function() {
-    if (cardDrawn || resolving) return;
-    var handoff = document.getElementById('turn-handoff');
-    handoff.style.opacity = '0';
-    setTimeout(function() { handoff.style.display = 'none'; }, 250);
-    // Draw immediately
-    cardDrawn = true;
-    var card = generateCard();
-    renderCardFront(card);
-    setTimeout(function() {
-      document.getElementById('card-inner').classList.add('flipped');
-      setTimeout(function() { resolveCard(card); }, 300);
-    }, 120);
-  });
 
   document.getElementById('btn-jail-ok').addEventListener('click', function() {
     advanceTurn();
@@ -550,8 +483,11 @@
     var p = currentPlayer();
     document.getElementById('hud-name').textContent  = p.name;
     document.getElementById('hud-cash').textContent  = '₩' + p.cash.toLocaleString();
-    var cnt = properties.filter(function(q){ return q.owner === p.name; }).length;
-    document.getElementById('hud-props').textContent = cnt + (cnt === 1 ? ' property' : ' properties');
+    var bare   = properties.filter(function(q){ return q.owner === p.name && q.tier === 0; }).length;
+    var houses = properties.filter(function(q){ return q.owner === p.name && q.tier === 1; }).length;
+    var hotels = properties.filter(function(q){ return q.owner === p.name && q.tier === 2; }).length;
+    var parts = []; if (bare) parts.push(bare+'🏘'); if (houses) parts.push(houses+'🏠'); if (hotels) parts.push(hotels+'🏨');
+    document.getElementById('hud-props').textContent = parts.length ? parts.join(' ') : '0 properties';
     updateAllPlayersStrip();
   }
 
@@ -564,14 +500,34 @@
       var isCurrent = alive && players[activeIdxs[turnPtr]] === player;
       var chip = document.createElement('div');
       chip.className = 'player-chip' + (isCurrent ? ' is-current' : '') + (!alive ? ' is-bust' : '');
+
       var nm = document.createElement('div'); nm.className = 'pc-name'; nm.textContent = player.name;
       var ca = document.createElement('div'); ca.className = 'pc-cash'; ca.textContent = '₩' + player.cash.toLocaleString();
-      var cnt = properties.filter(function(q){ return q.owner === player.name; }).length;
+
+      // Property breakdown: bare🏘 house🏠 hotel🏨
+      var bare   = properties.filter(function(q){ return q.owner === player.name && q.tier === 0; }).length;
+      var houses = properties.filter(function(q){ return q.owner === player.name && q.tier === 1; }).length;
+      var hotels = properties.filter(function(q){ return q.owner === player.name && q.tier === 2; }).length;
+      var parts = [];
+      if (bare)   parts.push(bare   + '🏘');
+      if (houses) parts.push(houses + '🏠');
+      if (hotels) parts.push(hotels + '🏨');
+
       var pr = document.createElement('div'); pr.className = 'pc-props';
-      pr.textContent = cnt ? cnt + ' 🏠' : (alive ? '—' : '💀');
+      pr.textContent = !alive ? '💀' : parts.length ? parts.join(' ') : '—';
+
       chip.appendChild(nm); chip.appendChild(ca); chip.appendChild(pr);
       strip.appendChild(chip);
     });
+  }
+
+  function flashCurrentChip() {
+    var chip = document.querySelector('#all-players-strip .player-chip.is-current');
+    if (!chip) return;
+    chip.classList.remove('flashing');
+    void chip.offsetWidth; // force reflow
+    chip.classList.add('flashing');
+    chip.addEventListener('animationend', function() { chip.classList.remove('flashing'); }, { once: true });
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -583,8 +539,11 @@
       return q.owner && q.owner !== p.name;
     });
     var unowned = properties.filter(function(q) { return !q.owner; });
-    var myUndeveloped = properties.filter(function(q) {
-      return q.owner === p.name && !q.developed;
+    var canBuildHouse = properties.filter(function(q) {
+      return q.owner === p.name && q.tier === 0 && p.cash >= q.houseCost;
+    });
+    var canBuildHotel = properties.filter(function(q) {
+      return q.owner === p.name && q.tier === 1 && p.cash >= q.hotelCost;
     });
 
     var pool = [];
@@ -606,16 +565,17 @@
       pool.push({ type:'property', prop: prop });
     });
 
-    // Rent cards — weighted by number of other-owned props
+    // Rent cards — extra weight for higher tiers (more dangerous)
     ownedByOthers.forEach(function(prop) {
       pool.push({ type:'rent', prop: prop });
-      if (prop.developed) pool.push({ type:'rent', prop: prop }); // extra weight
+      if (prop.tier >= 1) pool.push({ type:'rent', prop: prop }); // house = double weight
+      if (prop.tier >= 2) pool.push({ type:'rent', prop: prop }); // hotel = triple weight
     });
 
-    // Build opportunity — if player has undeveloped properties and cash
-    if (myUndeveloped.length && p.cash >= myUndeveloped[0].devCost) {
+    // Build opportunity — house or hotel available
+    if (canBuildHouse.length || canBuildHotel.length) {
       pool.push({ type:'build' });
-      pool.push({ type:'build' }); // slightly higher weight
+      pool.push({ type:'build' });
     }
 
     return pool[Math.floor(Math.random() * pool.length)];
@@ -671,15 +631,15 @@
       typeLabel.textContent = '🏘 For Sale';
       icon.textContent = '🏠';
       title.textContent = card.prop.name;
-      detail.textContent = 'Rent: ₩' + card.prop.rent + ' · Dev: ₩' + card.prop.devRent;
+      detail.textContent = '🏠 House rent: ₩' + card.prop.houseRent + ' · 🏨 Hotel: ₩' + card.prop.hotelRent;
       amount.textContent = '₩' + card.prop.price;
       amount.classList.add('minus');
     } else if (card.type === 'rent') {
-      var rentOwed = card.prop.developed ? card.prop.devRent : card.prop.rent;
+      var rentOwed = getRent(card.prop);
       typeLabel.textContent = '💸 Rent Due';
-      icon.textContent = '😬';
+      icon.textContent = card.prop.tier === 2 ? '😱' : '😬';
       title.textContent = card.prop.name;
-      detail.textContent = 'Owner: ' + card.prop.owner + (card.prop.developed ? ' (developed)' : '');
+      detail.textContent = 'Owner: ' + card.prop.owner + tierLabel(card.prop);
       amount.textContent = '-₩' + rentOwed;
       amount.classList.add('minus');
     } else if (card.type === 'go') {
@@ -708,9 +668,9 @@
       amount.classList.add('plus');
     } else if (card.type === 'build') {
       typeLabel.textContent = '🏗 Build Opportunity';
-      icon.textContent = '⬆️';
-      title.textContent = 'Develop a property!';
-      detail.textContent = 'Pick one of your properties to develop and charge higher rent.';
+      icon.textContent = '🏗';
+      title.textContent = 'Build on your land!';
+      detail.textContent = '🏠 House = good rent · 🏨 Hotel = game-ending rent';
     }
 
     front.appendChild(typeLabel);
@@ -774,7 +734,7 @@
       }
 
     } else if (card.type === 'rent') {
-      var rentOwed = card.prop.developed ? card.prop.devRent : card.prop.rent;
+      var rentOwed = getRent(card.prop);
       var ownerPlayer = players.find(function(x){ return x.name === card.prop.owner; });
       changeCash(p, -rentOwed);
       if (ownerPlayer) changeCash(ownerPlayer, rentOwed);
@@ -805,31 +765,49 @@
       showNextButton();
 
     } else if (card.type === 'build') {
-      var canBuild = properties.filter(function(q) {
-        return q.owner === p.name && !q.developed && p.cash >= q.devCost;
+      var canBuildHotel = properties.filter(function(q) {
+        return q.owner === p.name && q.tier === 1 && p.cash >= q.hotelCost;
       });
-      if (!canBuild.length) {
-        showNextButton();
-        return;
+      var canBuildHouse = properties.filter(function(q) {
+        return q.owner === p.name && q.tier === 0 && p.cash >= q.houseCost;
+      });
+      if (!canBuildHouse.length && !canBuildHotel.length) {
+        showNextButton(); return;
       }
       actions.style.display = 'flex';
       actions.style.flexDirection = 'column';
-      canBuild.forEach(function(prop) {
+
+      // Hotels first — most impactful
+      canBuildHotel.forEach(function(prop) {
         var btn = document.createElement('button');
         btn.className = 'btn btn-gold';
-        btn.style.fontSize = '13px';
-        btn.style.padding = '12px';
-        btn.style.marginBottom = '6px';
-        btn.textContent = prop.name + ' — ₩' + prop.devCost;
+        btn.style.cssText = 'font-size:13px;padding:12px;margin-bottom:6px;';
+        btn.textContent = '🏨 ' + prop.name + ' — ₩' + prop.hotelCost;
         btn.addEventListener('click', function() {
-          changeCash(p, -prop.devCost);
-          prop.developed = true;
+          changeCash(p, -prop.hotelCost);
+          prop.tier = 2;
           updateGameHUD();
-          showCashToast('-₩' + prop.devCost + ' 🏗');
+          showCashToast('-₩' + prop.hotelCost + ' 🏨');
           showNextButton();
         });
         actions.appendChild(btn);
       });
+
+      canBuildHouse.forEach(function(prop) {
+        var btn = document.createElement('button');
+        btn.className = 'btn btn-green';
+        btn.style.cssText = 'font-size:13px;padding:12px;margin-bottom:6px;';
+        btn.textContent = '🏠 ' + prop.name + ' — ₩' + prop.houseCost;
+        btn.addEventListener('click', function() {
+          changeCash(p, -prop.houseCost);
+          prop.tier = 1;
+          updateGameHUD();
+          showCashToast('-₩' + prop.houseCost + ' 🏠');
+          showNextButton();
+        });
+        actions.appendChild(btn);
+      });
+
       var skip = document.createElement('button');
       skip.className = 'btn btn-ghost';
       skip.textContent = 'Not now';
@@ -862,7 +840,7 @@
 
     // Bust — free properties
     properties.forEach(function(q) {
-      if (q.owner === player.name) { q.owner = null; q.developed = false; }
+      if (q.owner === player.name) { q.owner = null; q.tier = 0; }
     });
     // Remove from active
     var idx = players.indexOf(player);
@@ -878,7 +856,8 @@
     if (activeIdxs.length <= 1) {
       showResults();
     } else {
-      startTurn(true);
+      startTurn();
+      setTimeout(flashCurrentChip, 60);
     }
   });
 
@@ -888,7 +867,9 @@
   function advanceTurn() {
     if (activeIdxs.length <= 1) { showResults(); return; }
     turnPtr = (turnPtr + 1) % activeIdxs.length;
-    startTurn(true); // stay on card screen, show handoff overlay
+    startTurn();
+    // Flash the new player's chip after DOM updates
+    setTimeout(flashCurrentChip, 60);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -911,9 +892,9 @@
         var nm  = document.createElement('div'); nm.className = 'prop-name'; nm.textContent = prop.name;
         var inf = document.createElement('div'); inf.className = 'prop-info';
         var rentLine = document.createElement('div');
-        rentLine.textContent = 'Rent: ₩' + (prop.developed ? prop.devRent : prop.rent);
+        rentLine.textContent = 'Rent: ₩' + getRent(prop);
         var devLine = document.createElement('div'); devLine.className = 'prop-dev';
-        devLine.textContent = prop.developed ? '🏗 Developed' : '';
+        devLine.textContent = prop.tier === 2 ? '🏨 Hotel' : prop.tier === 1 ? '🏠 House' : '';
         inf.appendChild(rentLine); inf.appendChild(devLine);
         row.appendChild(dot); row.appendChild(nm); row.appendChild(inf);
         list.appendChild(row);
@@ -938,7 +919,12 @@
     var scored = players.map(function(p) {
       var propValue = properties
         .filter(function(q){ return q.owner === p.name; })
-        .reduce(function(sum, q){ return sum + Math.floor(q.price / 2); }, 0);
+        .reduce(function(sum, q){
+          var v = Math.floor(q.price / 2);
+          if (q.tier >= 1) v += Math.floor(q.houseCost / 2);
+          if (q.tier >= 2) v += Math.floor(q.hotelCost / 2);
+          return sum + v;
+        }, 0);
       return { name: p.name, cash: p.cash, propValue: propValue, total: p.cash + propValue };
     });
     scored.sort(function(a, b){ return b.total - a.total; });
