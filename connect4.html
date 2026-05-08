@@ -148,12 +148,21 @@
     .cell {
       border-radius:50%;
       background:rgba(255,255,255,0.15);
-      transition:background 0.15s;
       cursor:pointer;
       aspect-ratio:1/1;
+      overflow:hidden;
+      position:relative;
     }
-    .cell.p1 { background:radial-gradient(circle at 35% 35%, #FFE082, #FFC107); box-shadow:inset 0 -3px 6px rgba(0,0,0,0.2); }
-    .cell.p2 { background:radial-gradient(circle at 35% 35%, #EF9A9A, #E53935); box-shadow:inset 0 -3px 6px rgba(0,0,0,0.2); }
+    /* PNG coins — background removed, image fills the cell */
+    .cell.p1, .cell.p2 { background:transparent; }
+    .cell img {
+      width:100%; height:100%;
+      display:block;
+      pointer-events:none;
+      -webkit-user-drag:none;
+      user-select:none;
+    }
+    /* Drop animation on the cell (vertical fall) */
     .cell.dropping {
       animation: coin-drop calc(0.08s * var(--drop-rows, 3) + 0.18s) cubic-bezier(0.33, 0, 0.68, 1.4) both;
     }
@@ -161,10 +170,18 @@
       from { transform: translateY(calc(var(--drop-rows, 1) * -100% - calc(var(--drop-rows, 1) * 6px))); }
       to   { transform: translateY(0); }
     }
+    /* Spin animation on the img inside (random final angle per coin) */
+    .cell.dropping img {
+      animation: coin-spin calc(0.08s * var(--drop-rows, 3) + 0.18s) cubic-bezier(0.33, 0, 0.68, 1.4) both;
+    }
+    @keyframes coin-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(var(--final-rot, 180deg)); }
+    }
     .cell.win { animation:win-pulse 0.6s ease-in-out infinite alternate; }
     @keyframes win-pulse {
-      from { transform:scale(1); box-shadow:inset 0 -3px 6px rgba(0,0,0,0.2); }
-      to   { transform:scale(1.12); box-shadow:0 0 0 4px rgba(255,255,255,0.6); }
+      from { transform:scale(1); }
+      to   { transform:scale(1.12); box-shadow:0 0 0 4px rgba(255,255,255,0.7); }
     }
 
     /* column tap zones */
@@ -421,13 +438,33 @@
       var cell = document.getElementById('cell-' + row + '-' + col);
       if (!cell) return;
       var p = state[row][col];
+
+      // Clear any existing coin image
+      while (cell.firstChild) cell.removeChild(cell.firstChild);
       cell.className = 'cell' + (p === 1 ? ' p1' : p === 2 ? ' p2' : '');
-      if (animate && p !== 0) {
-        cell.style.setProperty('--drop-rows', row + 1); // +1 so row=0 still animates
-        cell.classList.add('dropping');
-        cell.addEventListener('animationend', function() {
-          cell.classList.remove('dropping');
-        }, { once: true });
+
+      if (p !== 0) {
+        var img = document.createElement('img');
+        img.src = p === 1 ? 'Sources/yellow.png' : 'Sources/red.png';
+        img.alt = '';
+
+        // Random final rotation so every coin lands at a different angle
+        var finalRot = Math.floor(Math.random() * 360);
+        cell.style.setProperty('--final-rot', finalRot + 'deg');
+
+        if (animate) {
+          cell.style.setProperty('--drop-rows', row + 1);
+          cell.classList.add('dropping');
+          // After animation ends: lock the rotation in place and clean up
+          cell.addEventListener('animationend', function() {
+            cell.classList.remove('dropping');
+            img.style.transform = 'rotate(' + finalRot + 'deg)';
+          }, { once: true });
+        } else {
+          img.style.transform = 'rotate(' + finalRot + 'deg)';
+        }
+
+        cell.appendChild(img);
       }
     }
 
