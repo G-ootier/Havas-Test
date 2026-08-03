@@ -129,16 +129,6 @@
       cursor:grab; touch-action:none;
     }
     .tile.dragging{ cursor:grabbing; transition:none; box-shadow:0 12px 30px rgba(0,0,0,.55), inset 0 0 0 2px rgba(255,199,44,.75); }
-    /* Home-position helper number (1–9), shown only while solving */
-    .tile-num{
-      position:absolute; top:3px; left:3px;
-      min-width:18px; height:18px; padding:0 4px;
-      display:flex; align-items:center; justify-content:center;
-      background:rgba(32,44,76,.85); color:var(--mustard);
-      border:1px solid rgba(255,199,44,.55); border-radius:6px;
-      font-family:'Oswald',Arial,sans-serif; font-weight:700; font-size:12px; line-height:1;
-      box-shadow:0 1px 3px rgba(0,0,0,.4); pointer-events:none;
-    }
     .solve-actions{ width:min(90vw,420px); display:flex; justify-content:center; gap:10px; }
     .solve-actions .btn{ flex:1; padding:14px; font-size:15px; }
     .hint-line{ font-size:12px; color:rgba(255,255,255,.5); text-align:center; }
@@ -496,7 +486,6 @@
       el.dataset.slot = slot;
       el.dataset.tile = tileId;
       if(interactive){
-        el.appendChild(make("span", "tile-num", String(tileId + 1))); // home-position helper
         (function(elm){ elm.addEventListener("pointerdown", function(ev){ beginDrag(elm, ev); }); })(el);
       } else { el.style.cursor = "default"; }
       container.appendChild(el);
