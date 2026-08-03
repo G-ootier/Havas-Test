@@ -124,10 +124,11 @@
     .tile{
       position:absolute; top:0; left:0;
       background-repeat:no-repeat;
-      transition:transform .13s cubic-bezier(.4,.9,.3,1);
+      transition:transform .16s cubic-bezier(.34,1.2,.5,1);
       box-shadow:inset 0 0 0 1px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.06);
-      cursor:pointer;
+      cursor:grab; touch-action:none;
     }
+    .tile.dragging{ cursor:grabbing; transition:none; box-shadow:0 12px 30px rgba(0,0,0,.55), inset 0 0 0 2px rgba(255,199,44,.75); }
     /* Home-position helper number (1–9), shown only while solving */
     .tile-num{
       position:absolute; top:3px; left:3px;
@@ -207,14 +208,14 @@
       </div>
       <div class="brandmark">
         <div class="c-logo">CLUE<span class="sub">DO</span></div>
-        <div class="tag">Crime Scene · Slide to Solve</div>
+        <div class="tag">Crime Scene · Drag to Solve</div>
       </div>
 
       <div class="case-card">
         <div class="case-title" id="intro-title">A murder has been committed</div>
         <div class="case-body">
-          The scene has been scrambled into six squares. Slide the tiles to piece it
-          back together against the clock — then name the culprit, the room and the weapon.
+          The scene has been scrambled into six squares. Drag the pieces to swap them and
+          rebuild it against the clock — then name the culprit, the room and the weapon.
         </div>
       </div>
 
@@ -238,7 +239,7 @@
       <div class="pass-eyebrow" id="pass-eyebrow">Pass the phone to</div>
       <div class="pass-name" id="pass-name">Player</div>
       <div class="pass-badge"><span id="pass-badge-txt">Square 1 of 6</span></div>
-      <div class="pass-meta" id="pass-meta">Solve the sliding puzzle before time runs out.</div>
+      <div class="pass-meta" id="pass-meta">Solve the picture before time runs out.</div>
       <button class="btn btn-primary" onclick="startTurn()">I'm ready</button>
     </div>
   </section>
@@ -267,7 +268,7 @@
         <div class="solved-flash" id="solved-flash"><span class="chk">✓</span></div>
       </div>
 
-      <div class="hint-line" id="solve-hint">Tap a tile next to the gap to slide it.</div>
+      <div class="hint-line" id="solve-hint">Drag a piece onto another to swap them.</div>
 
       <div class="solve-actions">
         <button class="btn btn-ghost" id="btn-skip" onclick="confirmSkip()">Pass / Skip</button>
@@ -396,28 +397,18 @@
   /* ── Geometry ── */
   var COLS = 2, ROWS = 3, PS = 3;
 
-  function neighbors(slot){
-    var r = Math.floor(slot/PS), c = slot%PS, out=[];
-    if(r>0) out.push(slot-PS);
-    if(r<PS-1) out.push(slot+PS);
-    if(c>0) out.push(slot-1);
-    if(c<PS-1) out.push(slot+1);
-    return out;
+  // Drag-to-swap puzzle: every tile is on the board and any two can swap, so any
+  // shuffle is solvable (no slide-parity constraint). Shuffle until few start home.
+  function countCorrect(board){
+    var c = 0; for(var i=0;i<board.length;i++){ if(board[i] === i) c++; } return c;
   }
-
-  // Parity-safe scramble (Build Brief §5.3): start solved, apply N legal moves,
-  // never immediately undoing the previous one → always solvable.
-  function scramble(moves){
+  function scramble(){
     var n = PS*PS;
     var board = []; for(var i=0;i<n;i++) board.push(i);
-    var blank = n-1, last = -1;
-    for(var k=0;k<moves;k++){
-      var opts = neighbors(blank).filter(function(s){ return s !== last; });
-      var m = opts[Math.floor(Math.random()*opts.length)];
-      var tmp = board[blank]; board[blank] = board[m]; board[m] = tmp;
-      last = blank; blank = m;
-    }
-    return { board:board, blank:blank };
+    do {
+      for(var i=n-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=board[i]; board[i]=board[j]; board[j]=t; }
+    } while(countCorrect(board) > 1); // avoid near-solved starts
+    return { board:board };
   }
 
   function isSolved(sq){
@@ -443,9 +434,9 @@
     var count = COLS*ROWS;
     for(var i=0;i<count;i++){
       var sc = i % COLS, sr = Math.floor(i/COLS);
-      var s = scramble(scene.difficulty.scrambleMoves);
+      var s = scramble();
       squares.push({
-        index:i, sc:sc, sr:sr, board:s.board, blankSlot:s.blank,
+        index:i, sc:sc, sr:sr, board:s.board,
         solved:false, missed:false, solverIdx:null, solveTime:null,
         movesUsed:0, pointsAwarded:0, cleanup:false
       });
@@ -491,12 +482,9 @@
     clear(container);
     var tileSize = B / PS;
     var fullW = COLS * B, fullH = ROWS * B;
-    var showHidden = sq.solved;
 
     for(var slot=0; slot<sq.board.length; slot++){
       var tileId = sq.board[slot];
-      if(tileId === PS*PS-1 && !showHidden) continue; // hidden tile during play
-
       var homeCol = tileId % PS, homeRow = Math.floor(tileId / PS);
       var el = make("div", "tile");
       el.style.width = tileSize + "px";
@@ -509,7 +497,7 @@
       el.dataset.tile = tileId;
       if(interactive){
         el.appendChild(make("span", "tile-num", String(tileId + 1))); // home-position helper
-        (function(elm){ elm.addEventListener("click", function(){ onTileTap(elm); }); })(el);
+        (function(elm){ elm.addEventListener("pointerdown", function(ev){ beginDrag(elm, ev); }); })(el);
       } else { el.style.cursor = "default"; }
       container.appendChild(el);
     }
@@ -530,7 +518,7 @@
     document.getElementById("pass-eyebrow").textContent =
       players.length === 1 ? "Ready," : "Pass the phone to";
     document.getElementById("pass-meta").textContent =
-      sq.cleanup ? "Second chance — reduced points." : "Solve the sliding puzzle before time runs out.";
+      sq.cleanup ? "Second chance — reduced points." : "Solve the picture before time runs out.";
     show("s-pass");
   }
 
@@ -542,7 +530,7 @@
     turnEnded = false;
     document.getElementById("solve-name").textContent = currentPlayer();
     document.getElementById("solve-lbl").textContent = sq.cleanup ? "Cleanup — Detective" : "Detective";
-    document.getElementById("solve-hint").textContent = "Tap a tile next to the gap to slide it.";
+    document.getElementById("solve-hint").textContent = "Drag a piece onto another to swap them.";
     document.getElementById("btn-skip").disabled = false;
     document.getElementById("solved-flash").classList.remove("on");
     renderDots();
@@ -578,22 +566,65 @@
 
   function stopTimer(){ turnEnded = true; if(timerInt){ clearInterval(timerInt); timerInt = null; } }
 
-  function onTileTap(el){
+  /* ── Drag-to-swap ──────────────────────────────────────────────────
+     Pick up any piece and drop it on another; the two trade places. Pointer
+     Events cover both touch and mouse. ─────────────────────────────────── */
+  var drag = null;
+  function slotBase(slot, ts){ return { x:(slot%PS)*ts, y:Math.floor(slot/PS)*ts }; }
+
+  function beginDrag(el, ev){
+    if(turnEnded || drag) return;
+    if(ev.button && ev.button > 0) return; // ignore non-primary buttons
+    ev.preventDefault();
+    var ts = boardEl.clientWidth / PS;
+    drag = { el:el, fromSlot:parseInt(el.dataset.slot,10), ts:ts, startX:ev.clientX, startY:ev.clientY };
+    el.classList.add("dragging");
+    window.addEventListener("pointermove", onDragMove);
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", cancelDrag);
+  }
+
+  function onDragMove(ev){
+    if(!drag) return;
+    var b = slotBase(drag.fromSlot, drag.ts);
+    var dx = ev.clientX - drag.startX, dy = ev.clientY - drag.startY;
+    drag.el.style.transform = "translate(" + (b.x+dx) + "px," + (b.y+dy) + "px) scale(1.07)";
+  }
+
+  function detachDrag(){
+    window.removeEventListener("pointermove", onDragMove);
+    window.removeEventListener("pointerup", endDrag);
+    window.removeEventListener("pointercancel", cancelDrag);
+  }
+
+  function settleTile(el, slot, ts){
+    var b = slotBase(slot, ts);
+    el.classList.remove("dragging");
+    el.style.transform = "translate(" + b.x + "px," + b.y + "px)";
+  }
+
+  function cancelDrag(){
+    if(!drag) return;
+    detachDrag(); settleTile(drag.el, drag.fromSlot, drag.ts); drag = null;
+  }
+
+  function endDrag(ev){
+    if(!drag) return;
+    detachDrag();
+    var d = drag; drag = null;
+    var rect = boardEl.getBoundingClientRect();
+    var col = Math.floor((ev.clientX - rect.left) / d.ts);
+    var row = Math.floor((ev.clientY - rect.top) / d.ts);
+    var toSlot = row * PS + col;
+    if(col < 0 || col >= PS || row < 0 || row >= PS || toSlot === d.fromSlot){
+      settleTile(d.el, d.fromSlot, d.ts); return; // outside, same slot, or just a tap
+    }
     var sq = currentSquare();
-    if(turnEnded) return;
-    var slot = parseInt(el.dataset.slot, 10);
-    if(neighbors(slot).indexOf(sq.blankSlot) === -1) return; // not adjacent to gap
-
-    var blank = sq.blankSlot;
-    sq.board[blank] = sq.board[slot];
-    sq.board[slot] = PS*PS-1;
-    sq.blankSlot = slot;
+    var other = boardEl.querySelector('.tile[data-slot="' + toSlot + '"]');
+    var tmp = sq.board[d.fromSlot]; sq.board[d.fromSlot] = sq.board[toSlot]; sq.board[toSlot] = tmp;
     sq.movesUsed++;
-
-    var tileSize = boardEl.clientWidth / PS;
-    el.dataset.slot = blank;
-    el.style.transform = "translate(" + ((blank%PS)*tileSize) + "px," + (Math.floor(blank/PS)*tileSize) + "px)";
-
+    if(other){ other.dataset.slot = d.fromSlot; settleTile(other, d.fromSlot, d.ts); }
+    d.el.dataset.slot = toSlot; settleTile(d.el, toSlot, d.ts);
     if(isSolved(sq)) onSquareSolved();
   }
 
