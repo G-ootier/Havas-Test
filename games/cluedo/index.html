@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
+  <title>Clue · Crime Scene</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===================================================================
+       Clue — Slide-Puzzle Mode
+       Official Clue 2024 brand system (see Build Brief · Appendix A):
+         Navy #202C4C · Peacock #567BC6 · Scarlett #AF231C · Mustard #FFC72C
+         Plum #662656 · Green #007A30 · White #FFFFFF
+       "Deep, rich jewel colours. Never flat, never primary."
+       =================================================================== */
+    :root{
+      --navy:#202C4C;    --navy-2:#182138;  --navy-3:#111830;
+      --peacock:#567BC6; --scarlett:#AF231C; --mustard:#FFC72C;
+      --plum:#662656;    --green:#007A30;    --white:#FFFFFF;
+      --ink:#0c1122;
+    }
+    *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+
+    html,body{
+      width:100%; height:100%; overflow:hidden;
+      font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+      color:var(--white);
+      background-color:var(--navy);
+      touch-action:none;
+    }
+    /* Tonal line-art backdrop (Peacock "C" monogram + magnifier motif), low opacity */
+    body{
+      background-image:
+        radial-gradient(circle at 50% 0%, rgba(86,123,198,0.16), transparent 60%),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' stroke='%23567BC6' stroke-width='2' opacity='0.10'><circle cx='34' cy='34' r='16'/><line x1='45' y1='45' x2='58' y2='58'/><circle cx='90' cy='86' r='20'/><path d='M90 74a12 12 0 100 24' /></g></svg>");
+      background-size:auto, 120px 120px;
+    }
+
+    h1,h2,h3,.display{ font-family:'Oswald','Oswald',Arial,sans-serif; text-transform:uppercase; letter-spacing:1px; }
+
+    .screen{ display:none; position:absolute; inset:0; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .screen.active{ display:flex; }
+    .pad{ padding:calc(env(safe-area-inset-top) + 20px) 22px calc(env(safe-area-inset-bottom) + 24px); }
+
+    /* ── Buttons ── */
+    .btn{
+      font-family:'Oswald',Arial,sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:1.5px;
+      border:none; border-radius:14px; padding:16px 26px; font-size:18px; cursor:pointer;
+      transition:transform .12s ease, box-shadow .12s ease; width:100%; max-width:360px;
+    }
+    .btn:active{ transform:scale(0.97); }
+    .btn-primary{ background:linear-gradient(180deg,#FFD24D,var(--mustard)); color:var(--ink); box-shadow:0 8px 22px rgba(255,199,44,.28); }
+    .btn-danger{ background:linear-gradient(180deg,#C42B23,var(--scarlett)); color:#fff; box-shadow:0 8px 22px rgba(175,35,28,.32); }
+    .btn-ghost{ background:rgba(255,255,255,.08); color:#fff; border:2px solid rgba(255,255,255,.22); }
+    .btn-ghost:active{ background:rgba(255,255,255,.16); }
+    .btn:disabled{ opacity:.4; box-shadow:none; }
+
+    .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
+    .kicker{ font-family:'Oswald',Arial,sans-serif; font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--peacock); font-weight:600; }
+    .backlink{ background:none; border:none; color:rgba(255,255,255,.6); font-size:13px; font-family:'Inter'; cursor:pointer; padding:6px 4px; }
+
+    /* ── Intro ── */
+    #s-intro .pad{ display:flex; flex-direction:column; align-items:center; gap:16px; min-height:100%; }
+    .brandmark{ display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:6px; }
+    .brandmark .c-logo{
+      font-family:'Oswald'; font-weight:700; font-size:46px; letter-spacing:2px;
+      color:var(--mustard); line-height:.9; text-shadow:0 2px 0 rgba(0,0,0,.35);
+    }
+    .brandmark .c-logo .sub{ color:#fff; }
+    .tag{ font-size:13px; color:rgba(255,255,255,.7); letter-spacing:1px; }
+    .case-card{
+      width:100%; max-width:400px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(86,123,198,.28); border-radius:20px; padding:20px 18px;
+      box-shadow:0 16px 40px rgba(0,0,0,.35);
+    }
+    .case-title{ font-size:26px; color:#fff; margin-bottom:6px; line-height:1; font-family:'Oswald'; text-transform:uppercase; }
+    .case-body{ font-size:14px; color:rgba(255,255,255,.72); line-height:1.5; }
+    .grid-preview{
+      display:grid; grid-template-columns:repeat(2,1fr); gap:6px;
+      width:min(74vw,300px); aspect-ratio:2/3; margin:6px auto 2px;
+      background:var(--navy-3); border-radius:14px; padding:6px;
+      box-shadow:inset 0 0 0 1px rgba(86,123,198,.25), 0 12px 30px rgba(0,0,0,.4);
+    }
+    .qa-row{ display:flex; justify-content:center; gap:10px; margin-top:4px; flex-wrap:wrap; }
+    .qa{ font-family:'Oswald'; font-size:12px; letter-spacing:2px; color:var(--peacock); text-transform:uppercase; }
+    .qa b{ color:#fff; }
+    .roster{ font-size:12px; color:rgba(255,255,255,.55); margin-top:2px; text-align:center; }
+
+    /* ── Pass card ── */
+    #s-pass{ background:radial-gradient(circle at 50% 38%, #2a3a63 0%, var(--navy-2) 70%); }
+    #s-pass .pad{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; min-height:100%; text-align:center; }
+    .pass-eyebrow{ font-size:13px; letter-spacing:3px; color:var(--peacock); font-family:'Oswald'; text-transform:uppercase; }
+    .pass-name{ font-family:'Oswald'; font-weight:700; font-size:52px; color:var(--mustard); line-height:1; text-shadow:0 3px 0 rgba(0,0,0,.35); word-break:break-word; }
+    .pass-meta{ font-size:14px; color:rgba(255,255,255,.7); }
+    .pass-badge{ display:inline-flex; align-items:center; gap:8px; background:rgba(0,0,0,.28); border:1px solid rgba(86,123,198,.3); border-radius:50px; padding:8px 16px; font-size:13px; color:#fff; }
+    .magnifier{ font-size:40px; filter:drop-shadow(0 4px 8px rgba(0,0,0,.4)); }
+
+    /* ── Solve ── */
+    #s-solve .pad{ display:flex; flex-direction:column; align-items:center; gap:14px; min-height:100%; }
+    .solve-head{ width:100%; max-width:420px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .solve-who{ display:flex; flex-direction:column; }
+    .solve-who .lbl{ font-size:11px; letter-spacing:2px; color:var(--peacock); font-family:'Oswald'; text-transform:uppercase; }
+    .solve-who .nm{ font-family:'Oswald'; font-weight:700; font-size:22px; color:#fff; line-height:1; }
+    .progress-dots{ display:flex; gap:6px; }
+    .pdot{ width:11px; height:11px; border-radius:50%; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25); }
+    .pdot.done{ background:var(--green); border-color:var(--green); }
+    .pdot.active{ background:var(--mustard); border-color:var(--mustard); transform:scale(1.15); }
+    .pdot.miss{ background:var(--scarlett); border-color:var(--scarlett); }
+
+    .timer-wrap{ position:relative; width:74px; height:74px; flex-shrink:0; }
+    .timer-wrap svg{ transform:rotate(-90deg); }
+    .timer-wrap .num{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Oswald'; font-weight:700; font-size:24px; }
+
+    .board-frame{
+      position:relative; width:min(90vw,420px); aspect-ratio:1/1;
+      background:var(--navy-3); border-radius:16px; padding:7px;
+      box-shadow:0 18px 44px rgba(0,0,0,.5), inset 0 0 0 1px rgba(86,123,198,.3);
+      touch-action:none;
+    }
+    .board{ position:relative; width:100%; height:100%; border-radius:10px; overflow:hidden; }
+    .tile{
+      position:absolute; top:0; left:0;
+      background-repeat:no-repeat;
+      transition:transform .13s cubic-bezier(.4,.9,.3,1);
+      box-shadow:inset 0 0 0 1px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.06);
+      cursor:pointer;
+    }
+    .solve-actions{ width:100%; max-width:420px; display:flex; gap:10px; }
+    .solve-actions .btn{ flex:1; padding:14px; font-size:15px; }
+    .hint-line{ font-size:12px; color:rgba(255,255,255,.5); text-align:center; }
+    .solved-flash{ position:absolute; inset:7px; border-radius:10px; background:rgba(0,122,48,0); display:flex; align-items:center; justify-content:center; pointer-events:none; transition:background .2s; }
+    .solved-flash.on{ background:rgba(0,122,48,.35); }
+    .solved-flash .chk{ font-family:'Oswald'; font-size:60px; color:#fff; opacity:0; transform:scale(.5); transition:all .3s ease; }
+    .solved-flash.on .chk{ opacity:1; transform:scale(1); }
+
+    /* ── Reassembly ── */
+    #s-assemble{ background:radial-gradient(circle at 50% 40%, #26355c, var(--navy-3)); }
+    #s-assemble .pad{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; min-height:100%; text-align:center; }
+    .assemble-grid{
+      display:grid; grid-template-columns:repeat(2,1fr);
+      width:min(78vw,320px); aspect-ratio:2/3;
+      border-radius:14px; overflow:hidden; box-shadow:0 22px 60px rgba(0,0,0,.55); gap:0;
+    }
+    .asq{ background-repeat:no-repeat; transition:transform .7s cubic-bezier(.2,.7,.2,1), opacity .5s ease; }
+
+    /* ── Reveal ── */
+    #s-reveal .pad{ display:flex; flex-direction:column; align-items:center; gap:16px; min-height:100%; }
+    .verdict{ font-family:'Oswald'; font-size:14px; letter-spacing:3px; color:var(--peacock); text-transform:uppercase; text-align:center; }
+    .scene-final{ width:min(64vw,240px); aspect-ratio:2/3; border-radius:12px; background-size:cover; background-position:center; box-shadow:0 18px 44px rgba(0,0,0,.5); border:2px solid rgba(255,199,44,.5); }
+    .answer-cards{ display:flex; gap:10px; width:100%; max-width:420px; transition:opacity .3s; }
+    .acard{ flex:1; background:rgba(0,0,0,.28); border:1px solid rgba(86,123,198,.3); border-radius:14px; padding:14px 8px; text-align:center; }
+    .acard .ax{ font-family:'Oswald'; font-size:11px; letter-spacing:2px; color:var(--peacock); text-transform:uppercase; margin-bottom:6px; }
+    .acard .val{ font-family:'Oswald'; font-size:16px; color:#fff; line-height:1.05; }
+
+    .callit{ width:100%; max-width:420px; }
+    .callit h3{ font-size:18px; color:var(--mustard); text-align:center; margin-bottom:4px; }
+    .axis-block{ margin-bottom:14px; }
+    .axis-block .axl{ font-family:'Oswald'; font-size:12px; letter-spacing:2px; color:var(--peacock); text-transform:uppercase; margin-bottom:6px; }
+    .opts{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .opt{ background:rgba(255,255,255,.07); border:2px solid rgba(255,255,255,.16); border-radius:12px; padding:12px 8px; font-size:14px; font-weight:600; text-align:center; cursor:pointer; transition:all .12s; color:#fff; }
+    .opt.sel{ border-color:var(--mustard); background:rgba(255,199,44,.18); }
+    .opt.correct{ border-color:var(--green); background:rgba(0,122,48,.28); }
+    .opt.wrong{ border-color:var(--scarlett); background:rgba(175,35,28,.28); }
+    .callit-timer{ text-align:center; font-family:'Oswald'; font-size:14px; letter-spacing:2px; color:rgba(255,255,255,.6); margin-bottom:10px; }
+
+    /* ── Results ── */
+    #s-results .pad{ display:flex; flex-direction:column; align-items:center; gap:14px; min-height:100%; }
+    .result-banner{ font-family:'Oswald'; font-size:40px; line-height:.95; text-align:center; }
+    .result-banner.win{ color:var(--green); }
+    .result-banner.partial{ color:var(--mustard); }
+    .score-big{ font-family:'Oswald'; font-size:64px; color:var(--mustard); line-height:.9; text-shadow:0 3px 0 rgba(0,0,0,.35); text-align:center; }
+    .score-lbl{ font-size:12px; letter-spacing:2px; color:rgba(255,255,255,.6); text-transform:uppercase; font-family:'Oswald'; text-align:center; }
+    .panel{ width:100%; max-width:420px; background:rgba(0,0,0,.24); border:1px solid rgba(86,123,198,.28); border-radius:16px; padding:14px 16px; }
+    .panel h3{ font-size:13px; letter-spacing:2px; color:var(--peacock); margin-bottom:10px; }
+    .lrow{ display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.07); font-size:14px; }
+    .lrow:last-child{ border-bottom:none; }
+    .lrow .rank{ width:22px; color:var(--mustard); font-family:'Oswald'; font-weight:700; }
+    .lrow .who{ flex:1; margin:0 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lrow .val{ font-family:'Oswald'; color:#fff; }
+    .lrow.me{ color:var(--mustard); }
+    .detective{ display:flex; align-items:center; gap:10px; font-size:14px; }
+    .detective .medal{ font-size:22px; }
+    .muted{ color:rgba(255,255,255,.5); }
+  </style>
+</head>
+<body>
+
+  <!-- ============ 1 · SCENE INTRO ============ -->
+  <section id="s-intro" class="screen active">
+    <div class="pad">
+      <div class="topbar" style="width:100%;max-width:420px;">
+        <span class="kicker">Case File</span>
+        <button class="backlink" onclick="goMenu()">&larr; Menu</button>
+      </div>
+      <div class="brandmark">
+        <div class="c-logo">CLUE<span class="sub">DO</span></div>
+        <div class="tag">Crime Scene · Slide to Solve</div>
+      </div>
+
+      <div class="case-card">
+        <div class="case-title" id="intro-title">A murder has been committed</div>
+        <div class="case-body">
+          The scene has been scrambled into six squares. Slide the tiles to piece it
+          back together against the clock — then name the culprit, the room and the weapon.
+        </div>
+      </div>
+
+      <div class="grid-preview" id="intro-grid"></div>
+
+      <div class="qa-row">
+        <span class="qa">WHO&nbsp;<b>?</b></span>
+        <span class="qa">WHERE&nbsp;<b>?</b></span>
+        <span class="qa">WITH&nbsp;WHAT&nbsp;<b>?</b></span>
+      </div>
+      <div class="roster" id="intro-roster"></div>
+
+      <button class="btn btn-primary" onclick="beginGame()">Start Investigation</button>
+    </div>
+  </section>
+
+  <!-- ============ 2 · PASS THE PHONE ============ -->
+  <section id="s-pass" class="screen">
+    <div class="pad">
+      <span class="magnifier">🔍</span>
+      <div class="pass-eyebrow" id="pass-eyebrow">Pass the phone to</div>
+      <div class="pass-name" id="pass-name">Player</div>
+      <div class="pass-badge"><span id="pass-badge-txt">Square 1 of 6</span></div>
+      <div class="pass-meta" id="pass-meta">Solve the sliding puzzle before time runs out.</div>
+      <button class="btn btn-primary" onclick="startTurn()">I'm ready</button>
+    </div>
+  </section>
+
+  <!-- ============ 3 · SOLVE ============ -->
+  <section id="s-solve" class="screen">
+    <div class="pad">
+      <div class="solve-head">
+        <div class="solve-who">
+          <span class="lbl" id="solve-lbl">Detective</span>
+          <span class="nm" id="solve-name">Player</span>
+          <div class="progress-dots" id="solve-dots" style="margin-top:6px;"></div>
+        </div>
+        <div class="timer-wrap">
+          <svg width="74" height="74" viewBox="0 0 74 74">
+            <circle cx="37" cy="37" r="32" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="6"/>
+            <circle id="timer-ring" cx="37" cy="37" r="32" fill="none" stroke="var(--mustard)" stroke-width="6" stroke-linecap="round"
+              stroke-dasharray="201.06" stroke-dashoffset="0"/>
+          </svg>
+          <div class="num" id="timer-num">55</div>
+        </div>
+      </div>
+
+      <div class="board-frame">
+        <div class="board" id="board"></div>
+        <div class="solved-flash" id="solved-flash"><span class="chk">✓</span></div>
+      </div>
+
+      <div class="hint-line" id="solve-hint">Tap a tile next to the gap to slide it.</div>
+
+      <div class="solve-actions">
+        <button class="btn btn-ghost" id="btn-skip" onclick="confirmSkip()">Pass / Skip</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4 · REASSEMBLY ============ -->
+  <section id="s-assemble" class="screen">
+    <div class="pad">
+      <div class="verdict">The scene reassembles…</div>
+      <div class="assemble-grid" id="assemble-grid"></div>
+      <div class="pass-meta" id="assemble-msg">Piecing the evidence together</div>
+    </div>
+  </section>
+
+  <!-- ============ 5 · REVEAL / CALL IT ============ -->
+  <section id="s-reveal" class="screen">
+    <div class="pad">
+      <div class="verdict" id="reveal-verdict">The evidence points to…</div>
+      <div class="scene-final" id="reveal-scene"></div>
+
+      <div class="answer-cards" id="reveal-answers"></div>
+
+      <div class="callit" id="callit-block" style="display:none;">
+        <h3>Call it! — Team guess for bonus</h3>
+        <div class="callit-timer" id="callit-timer">10s</div>
+        <div id="callit-axes"></div>
+        <button class="btn btn-primary" id="callit-lock" onclick="lockCallit()">Lock in guess</button>
+      </div>
+
+      <div id="reveal-actions" style="display:flex;flex-direction:column;gap:10px;align-items:center;width:100%;">
+        <button class="btn btn-danger" id="btn-callit" onclick="startCallit()">Call it for bonus (10s)</button>
+        <button class="btn btn-ghost" onclick="toResults()">Skip to results</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6 · RESULTS ============ -->
+  <section id="s-results" class="screen">
+    <div class="pad">
+      <div class="result-banner" id="result-banner">Case Closed</div>
+      <div>
+        <div class="score-big" id="result-score">0</div>
+        <div class="score-lbl">Team Score</div>
+      </div>
+
+      <div class="panel" id="detective-panel">
+        <h3>🕵️ Top Detective</h3>
+        <div class="detective" id="detective-row"></div>
+      </div>
+
+      <div class="panel">
+        <h3 id="lb-title">Leaderboard — This Scene</h3>
+        <div id="leaderboard-rows"></div>
+      </div>
+
+      <button class="btn btn-primary" onclick="playAgain()">Play again</button>
+      <button class="btn btn-ghost" onclick="goMenu()" style="margin-top:2px;">Back to menu</button>
+    </div>
+  </section>
+
+  <script src="../../shared.js"></script>
+  <script>
+  /* ===================================================================
+     SCENES DATA  (Content model — Build Brief §7 / Production Kit §4)
+     Add scenes 02–04 here once final art is delivered to assets/scenes/.
+     The app slices the image in-app: no pre-cut tiles needed.
+     NOTE: SCENE_01 uses the supplied test background (a room plate with no
+     composited character/weapon yet), so its culprit/weapon are PLACEHOLDERS
+     flagged below — swap for the real values when the composed art lands.
+     =================================================================== */
+  var SCENES = [
+    {
+      id: "scene-01",
+      title: "Murder at the Grand Piano",
+      image: "assets/scenes/scene-01.png", // 2:3, 1080×1620
+      grid: { cols: 2, rows: 3 },
+      puzzleSize: 3,
+      difficulty: { scrambleMoves: 60, timerSeconds: 55 },
+      solution: { culprit: "Professor Plum", room: "Ballroom", weapon: "Candlestick" }, // PLACEHOLDER metadata
+      decoys: {
+        culprit: ["Miss Scarlett", "Colonel Mustard", "Mayor Green"],
+        room:    ["Lounge", "Study", "Library"],
+        weapon:  ["Revolver", "Rope", "Dagger"]
+      }
+    }
+    // { id:"scene-02", ... },  // add when art is ready
+    // { id:"scene-03", ... },
+    // { id:"scene-04", ... }
+  ];
+
+  /* ── Scoring config (Build Brief §6) ── */
+  var SCORE = { base:100, perSecond:2, tidyMax:30, cleanupBase:40, callitBonus:150 };
+  var CALLIT_SECONDS = 10;
+  var LB_KEY = "cluedo_leaderboard";
+
+  /* ── DOM helpers (safe construction, no innerHTML) ── */
+  function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+  // Run cb with the element's laid-out width. Layout is synchronous once a screen
+  // is active, so read it now; only fall back to rAF if width isn't ready yet
+  // (rAF can be throttled when the page isn't actively painting).
+  function whenSized(el, cb){
+    var w = el.clientWidth;
+    if(w > 0){ cb(w); return; }
+    requestAnimationFrame(function(){ cb(el.clientWidth); });
+  }
+  function make(tag, cls, text){
+    var e = document.createElement(tag);
+    if(cls) e.className = cls;
+    if(text != null) e.textContent = text;
+    return e;
+  }
+
+  /* ── Game state ── */
+  var players = [];
+  var scene = null;
+  var squares = [];
+  var turnOrder = [];
+  var turnPtr = 0;
+  var activePlayerCursor = 0;
+  var teamScore = 0;
+  var perPlayer = {};
+  var wakeLock = null;
+
+  /* ── Geometry ── */
+  var COLS = 2, ROWS = 3, PS = 3;
+
+  function neighbors(slot){
+    var r = Math.floor(slot/PS), c = slot%PS, out=[];
+    if(r>0) out.push(slot-PS);
+    if(r<PS-1) out.push(slot+PS);
+    if(c>0) out.push(slot-1);
+    if(c<PS-1) out.push(slot+1);
+    return out;
+  }
+
+  // Parity-safe scramble (Build Brief §5.3): start solved, apply N legal moves,
+  // never immediately undoing the previous one → always solvable.
+  function scramble(moves){
+    var n = PS*PS;
+    var board = []; for(var i=0;i<n;i++) board.push(i);
+    var blank = n-1, last = -1;
+    for(var k=0;k<moves;k++){
+      var opts = neighbors(blank).filter(function(s){ return s !== last; });
+      var m = opts[Math.floor(Math.random()*opts.length)];
+      var tmp = board[blank]; board[blank] = board[m]; board[m] = tmp;
+      last = blank; blank = m;
+    }
+    return { board:board, blank:blank };
+  }
+
+  function isSolved(sq){
+    for(var i=0;i<sq.board.length;i++){ if(sq.board[i] !== i) return false; }
+    return true;
+  }
+
+  /* ── Setup ── */
+  function initGame(){
+    players = HG.getPlayers();
+    if(!players || players.length === 0) players = ["Player 1"];
+
+    // Pick a scene; avoid immediate repeat (Build Brief §10).
+    var last = sessionStorage.getItem("cluedo_last_scene");
+    var pool = SCENES.filter(function(s){ return SCENES.length===1 || s.id !== last; });
+    if(pool.length === 0) pool = SCENES;
+    scene = pool[Math.floor(Math.random()*pool.length)];
+    sessionStorage.setItem("cluedo_last_scene", scene.id);
+
+    COLS = scene.grid.cols; ROWS = scene.grid.rows; PS = scene.puzzleSize;
+
+    squares = [];
+    var count = COLS*ROWS;
+    for(var i=0;i<count;i++){
+      var sc = i % COLS, sr = Math.floor(i/COLS);
+      var s = scramble(scene.difficulty.scrambleMoves);
+      squares.push({
+        index:i, sc:sc, sr:sr, board:s.board, blankSlot:s.blank,
+        solved:false, missed:false, solverIdx:null, solveTime:null,
+        movesUsed:0, pointsAwarded:0, cleanup:false
+      });
+    }
+
+    turnOrder = squares.map(function(s){ return s.index; });
+    turnPtr = 0; activePlayerCursor = 0; teamScore = 0; perPlayer = {};
+    players.forEach(function(p){ perPlayer[p] = { solves:[], count:0 }; });
+
+    var pre = new Image(); pre.src = scene.image; // preload (Build Brief §9)
+
+    document.getElementById("intro-title").textContent = scene.title;
+    document.getElementById("intro-roster").textContent =
+      players.length + (players.length===1?" detective: ":" detectives: ") + players.join(" · ");
+    renderIntroGrid();
+  }
+
+  function renderIntroGrid(){
+    var host = document.getElementById("intro-grid");
+    clear(host);
+    whenSized(host, function(hw){
+      var cw = hw - 12;
+      var cellW = cw / COLS;
+      squares.forEach(function(sq){
+        var cell = make("div");
+        cell.style.position = "relative";
+        cell.style.width = "100%";
+        cell.style.aspectRatio = "1/1";
+        cell.style.borderRadius = "6px";
+        cell.style.overflow = "hidden";
+        cell.style.background = "var(--navy-2)";
+        renderTilesInto(cell, sq, cellW, false);
+        host.appendChild(cell);
+      });
+    });
+  }
+
+  /* ── Tile rendering ─────────────────────────────────────────────────
+     Full image is COLS squares wide × ROWS tall. Displaying ONE square at
+     size B means the whole image is (COLS*B) × (ROWS*B). Each tile shows a
+     sub-region via background-position. ────────────────────────────────── */
+  function renderTilesInto(container, sq, B, interactive){
+    clear(container);
+    var tileSize = B / PS;
+    var fullW = COLS * B, fullH = ROWS * B;
+    var showHidden = sq.solved;
+
+    for(var slot=0; slot<sq.board.length; slot++){
+      var tileId = sq.board[slot];
+      if(tileId === PS*PS-1 && !showHidden) continue; // hidden tile during play
+
+      var homeCol = tileId % PS, homeRow = Math.floor(tileId / PS);
+      var el = make("div", "tile");
+      el.style.width = tileSize + "px";
+      el.style.height = tileSize + "px";
+      el.style.backgroundImage = "url('" + scene.image + "')";
+      el.style.backgroundSize = fullW + "px " + fullH + "px";
+      el.style.backgroundPosition = (-(sq.sc*B + homeCol*tileSize)) + "px " + (-(sq.sr*B + homeRow*tileSize)) + "px";
+      el.style.transform = "translate(" + ((slot%PS)*tileSize) + "px," + (Math.floor(slot/PS)*tileSize) + "px)";
+      el.dataset.slot = slot;
+      el.dataset.tile = tileId;
+      if(interactive){
+        (function(elm){ elm.addEventListener("click", function(){ onTileTap(elm); }); })(el);
+      } else { el.style.cursor = "default"; }
+      container.appendChild(el);
+    }
+  }
+
+  function beginGame(){ goPassCard(); }
+
+  /* ── Pass card ── */
+  function currentSquare(){ return squares[turnOrder[turnPtr]]; }
+  function currentPlayer(){ return players[activePlayerCursor % players.length]; }
+
+  function goPassCard(){
+    if(turnPtr >= turnOrder.length){ return afterMainRound(); }
+    var sq = currentSquare();
+    document.getElementById("pass-name").textContent = currentPlayer();
+    document.getElementById("pass-badge-txt").textContent =
+      (sq.cleanup ? "Cleanup · " : "") + "Square " + (turnPtr+1) + " of " + turnOrder.length;
+    document.getElementById("pass-eyebrow").textContent =
+      players.length === 1 ? "Ready," : "Pass the phone to";
+    document.getElementById("pass-meta").textContent =
+      sq.cleanup ? "Second chance — reduced points." : "Solve the sliding puzzle before time runs out.";
+    show("s-pass");
+  }
+
+  /* ── Turn / solve ── */
+  var timerInt = null, turnStart = 0, turnDuration = 0, turnEnded = false, boardEl = null;
+
+  function startTurn(){
+    var sq = currentSquare();
+    turnEnded = false;
+    document.getElementById("solve-name").textContent = currentPlayer();
+    document.getElementById("solve-lbl").textContent = sq.cleanup ? "Cleanup — Detective" : "Detective";
+    document.getElementById("solve-hint").textContent = "Tap a tile next to the gap to slide it.";
+    document.getElementById("btn-skip").disabled = false;
+    document.getElementById("solved-flash").classList.remove("on");
+    renderDots();
+    show("s-solve");
+    requestWakeLock();
+
+    boardEl = document.getElementById("board");
+    whenSized(boardEl, function(B){
+      sq.movesUsed = 0;
+      renderTilesInto(boardEl, sq, B, true);
+      turnDuration = scene.difficulty.timerSeconds * 1000;
+      turnStart = Date.now();
+      runTimer();
+    });
+  }
+
+  function runTimer(){
+    var ring = document.getElementById("timer-ring");
+    var num = document.getElementById("timer-num");
+    var C = 2 * Math.PI * 32;
+    function frame(){
+      if(turnEnded) return;
+      var remain = Math.max(0, turnDuration - (Date.now() - turnStart)); // wall-clock
+      num.textContent = Math.ceil(remain/1000);
+      ring.setAttribute("stroke-dashoffset", (C * (1 - remain/turnDuration)).toFixed(1));
+      if(remain <= 10000){ ring.setAttribute("stroke","var(--scarlett)"); num.style.color = "var(--scarlett)"; }
+      else { ring.setAttribute("stroke","var(--mustard)"); num.style.color = "#fff"; }
+      if(remain <= 0){ stopTimer(); timeOut(); }
+    }
+    frame();
+    timerInt = setInterval(frame, 120);
+  }
+
+  function stopTimer(){ turnEnded = true; if(timerInt){ clearInterval(timerInt); timerInt = null; } }
+
+  function onTileTap(el){
+    var sq = currentSquare();
+    if(turnEnded) return;
+    var slot = parseInt(el.dataset.slot, 10);
+    if(neighbors(slot).indexOf(sq.blankSlot) === -1) return; // not adjacent to gap
+
+    var blank = sq.blankSlot;
+    sq.board[blank] = sq.board[slot];
+    sq.board[slot] = PS*PS-1;
+    sq.blankSlot = slot;
+    sq.movesUsed++;
+
+    var tileSize = boardEl.clientWidth / PS;
+    el.dataset.slot = blank;
+    el.style.transform = "translate(" + ((blank%PS)*tileSize) + "px," + (Math.floor(blank/PS)*tileSize) + "px)";
+
+    if(isSolved(sq)) onSquareSolved();
+  }
+
+  function onSquareSolved(){
+    stopTimer();
+    var sq = currentSquare();
+    var name = currentPlayer();
+    var remainMs = Math.max(0, turnDuration - (Date.now() - turnStart));
+    var remainSec = remainMs / 1000;
+    var solveSec = scene.difficulty.timerSeconds - remainSec;
+
+    sq.solved = true; sq.missed = false;
+    sq.solverIdx = activePlayerCursor % players.length;
+    sq.solveTime = solveSec;
+
+    var base = sq.cleanup ? SCORE.cleanupBase : SCORE.base;
+    var speed = sq.cleanup ? 0 : Math.round(remainSec * SCORE.perSecond);
+    var minMoves = PS*PS*3;
+    var tidy = sq.cleanup ? 0 : Math.max(0, Math.round(SCORE.tidyMax * (1 - Math.min(1, sq.movesUsed/(minMoves*2)))));
+    sq.pointsAwarded = base + speed + tidy;
+    teamScore += sq.pointsAwarded;
+
+    perPlayer[name].solves.push(solveSec);
+    perPlayer[name].count++;
+
+    renderTilesInto(boardEl, sq, boardEl.clientWidth, false); // restore hidden tile
+    document.getElementById("btn-skip").disabled = true;
+    document.getElementById("solved-flash").classList.add("on");
+    renderDots();
+    setTimeout(nextTurn, 950);
+  }
+
+  function timeOut(){
+    stopTimer();
+    var sq = currentSquare();
+    if(!sq.solved) sq.missed = true;
+    renderDots();
+    document.getElementById("solve-hint").textContent = "⏱ Time! Passing on…";
+    document.getElementById("btn-skip").disabled = true;
+    setTimeout(nextTurn, 900);
+  }
+
+  function confirmSkip(){
+    if(confirm("Pass this square without solving it? It can return in the cleanup round.")){
+      stopTimer();
+      currentSquare().missed = true;
+      nextTurn();
+    }
+  }
+
+  function nextTurn(){
+    turnPtr++; activePlayerCursor++;
+    if(turnPtr >= turnOrder.length) afterMainRound();
+    else goPassCard();
+  }
+
+  var cleanupStarted = false;
+  function afterMainRound(){
+    if(!cleanupStarted){
+      var missed = squares.filter(function(s){ return !s.solved; });
+      if(missed.length > 0){
+        cleanupStarted = true;
+        turnOrder = missed.map(function(s){ s.cleanup = true; s.missed = false; return s.index; });
+        turnPtr = 0;
+        goPassCard();
+        return;
+      }
+    }
+    releaseWakeLock();
+    goAssemble();
+  }
+
+  function renderDots(){
+    var host = document.getElementById("solve-dots");
+    clear(host);
+    var activeIdx = currentSquare().index;
+    squares.forEach(function(sq){
+      var d = make("div", "pdot");
+      if(sq.solved) d.classList.add("done");
+      else if(sq.index === activeIdx) d.classList.add("active");
+      else if(sq.missed) d.classList.add("miss");
+      host.appendChild(d);
+    });
+  }
+
+  /* ── Reassembly ── */
+  function goAssemble(){
+    show("s-assemble");
+    var grid = document.getElementById("assemble-grid");
+    clear(grid);
+    whenSized(grid, function(gw){
+      var B = gw / COLS;
+      var fullW = COLS * B, fullH = ROWS * B;
+      var cells = [];
+      squares.forEach(function(sq){
+        var cell = make("div", "asq");
+        cell.style.width = "100%";
+        cell.style.aspectRatio = "1/1";
+        cell.style.backgroundImage = "url('" + scene.image + "')";
+        cell.style.backgroundSize = fullW + "px " + fullH + "px";
+        cell.style.backgroundPosition = (-(sq.sc*B)) + "px " + (-(sq.sr*B)) + "px";
+        var dx = (sq.sc===0? -1:1) * (18 + Math.random()*10);
+        var dy = (sq.sr-1) * (18 + Math.random()*10);
+        cell.style.transform = "translate(" + dx + "px," + dy + "px) rotate(" + (Math.random()*8-4) + "deg)";
+        cell.style.opacity = sq.solved ? "1" : "0.55";
+        grid.appendChild(cell);
+        cells.push(cell);
+      });
+      cells.forEach(function(c, i){
+        setTimeout(function(){ c.style.transform = "translate(0,0) rotate(0deg)"; c.style.opacity = "1"; }, 220 + i*130);
+      });
+      setTimeout(goReveal, 220 + cells.length*130 + 900);
+    });
+  }
+
+  /* ── Reveal ── */
+  function goReveal(){
+    show("s-reveal");
+    document.getElementById("reveal-verdict").textContent = "The evidence points to…";
+    document.getElementById("reveal-scene").style.backgroundImage = "url('" + scene.image + "')";
+    var host = document.getElementById("reveal-answers");
+    host.style.display = "flex";
+    clear(host);
+    [["Who","culprit"],["Where","room"],["With what","weapon"]].forEach(function(a){
+      var c = make("div", "acard");
+      c.appendChild(make("div", "ax", a[0]));
+      c.appendChild(make("div", "val", scene.solution[a[1]]));
+      host.appendChild(c);
+    });
+    document.getElementById("callit-block").style.display = "none";
+    document.getElementById("callit-lock").style.display = "";
+    document.getElementById("reveal-actions").style.display = "flex";
+  }
+
+  /* ── Call it (optional bonus) ── */
+  var callitSel = {}, callitInt = null, callitStart = 0, callitLocked = false;
+  function startCallit(){
+    callitSel = {}; callitLocked = false;
+    document.getElementById("reveal-actions").style.display = "none";
+    document.getElementById("reveal-verdict").textContent = "Call it! — who, where, with what?";
+    document.getElementById("reveal-answers").style.display = "none"; // hide answers during the guess
+    var host = document.getElementById("callit-axes");
+    clear(host);
+    [["Culprit","culprit"],["Room","room"],["Weapon","weapon"]].forEach(function(a){
+      var opts = HG.shuffle([scene.solution[a[1]]].concat(scene.decoys[a[1]].slice(0,3)));
+      var block = make("div", "axis-block");
+      block.appendChild(make("div", "axl", a[0]));
+      var grid = make("div", "opts");
+      opts.forEach(function(val){
+        var o = make("div", "opt", val);
+        o.addEventListener("click", function(){
+          if(callitLocked) return;
+          Array.prototype.forEach.call(grid.children, function(ch){ ch.classList.remove("sel"); });
+          o.classList.add("sel");
+          callitSel[a[1]] = val;
+        });
+        grid.appendChild(o);
+      });
+      block.appendChild(grid);
+      host.appendChild(block);
+    });
+    document.getElementById("callit-block").style.display = "block";
+    callitStart = Date.now();
+    function tick(){
+      if(callitLocked) return;
+      var remain = Math.max(0, CALLIT_SECONDS*1000 - (Date.now()-callitStart));
+      document.getElementById("callit-timer").textContent = Math.ceil(remain/1000) + "s";
+      if(remain <= 0) lockCallit();
+    }
+    tick();
+    callitInt = setInterval(tick, 150);
+  }
+
+  function lockCallit(){
+    if(callitLocked) return;
+    callitLocked = true;
+    if(callitInt){ clearInterval(callitInt); callitInt = null; }
+    var axes = ["culprit","room","weapon"];
+    var bonus = 0;
+    var blocks = document.getElementById("callit-axes").children;
+    axes.forEach(function(ax, i){
+      var correct = scene.solution[ax];
+      var grid = blocks[i].querySelector(".opts");
+      Array.prototype.forEach.call(grid.children, function(o){
+        if(o.textContent === correct) o.classList.add("correct");
+        else if(o.classList.contains("sel")) o.classList.add("wrong");
+      });
+      if(callitSel[ax] === correct) bonus += SCORE.callitBonus;
+    });
+    teamScore += bonus;
+    document.getElementById("callit-timer").textContent = bonus>0 ? ("+" + bonus + " bonus!") : "No bonus this time";
+    document.getElementById("callit-lock").style.display = "none";
+    document.getElementById("reveal-verdict").textContent = "The evidence points to…";
+    document.getElementById("reveal-answers").style.display = "flex"; // reveal the real answers
+    setTimeout(toResults, 2000);
+  }
+
+  /* ── Results ── */
+  function toResults(){
+    releaseWakeLock();
+    var allSolved = squares.every(function(s){ return s.solved; });
+    var banner = document.getElementById("result-banner");
+    if(allSolved){ banner.textContent = "Case Solved!"; banner.className = "result-banner win"; }
+    else { banner.textContent = "Partly Cracked"; banner.className = "result-banner partial"; }
+    document.getElementById("result-score").textContent = teamScore;
+
+    var best = null;
+    players.forEach(function(p){
+      var s = perPlayer[p];
+      if(s.count > 0){
+        var avg = s.solves.reduce(function(a,b){return a+b;},0) / s.count;
+        if(best === null || avg < best.avg) best = { name:p, avg:avg, count:s.count };
+      }
+    });
+    var drow = document.getElementById("detective-row");
+    clear(drow);
+    if(best){
+      drow.appendChild(make("span", "medal", "🏅"));
+      var txt = make("span");
+      var nm = make("b", null, best.name);
+      txt.appendChild(nm);
+      txt.appendChild(document.createTextNode(" — avg " + best.avg.toFixed(1) + "s over " + best.count + " square" + (best.count>1?"s":"")));
+      drow.appendChild(txt);
+    } else {
+      document.getElementById("detective-panel").style.display = "none";
+    }
+
+    saveAndRenderLeaderboard(allSolved);
+  }
+
+  function saveAndRenderLeaderboard(allSolved){
+    var totalTime = squares.reduce(function(a,s){ return a + (s.solveTime||0); }, 0);
+    var entry = { score:teamScore, time:Math.round(totalTime), scene:scene.id, players:players.slice(), solved:allSolved, date:Date.now() };
+    var all = [];
+    try { all = JSON.parse(localStorage.getItem(LB_KEY) || "[]"); } catch(e){ all = []; }
+    all.push(entry);
+    localStorage.setItem(LB_KEY, JSON.stringify(all.slice(-100)));
+
+    var sceneRows = all.filter(function(r){ return r.scene === scene.id; })
+                       .sort(function(a,b){ return b.score - a.score; });
+
+    document.getElementById("lb-title").textContent = "Leaderboard — " + scene.title;
+    var host = document.getElementById("leaderboard-rows");
+    clear(host);
+    if(sceneRows.length === 0){
+      var empty = make("div", "lrow");
+      empty.appendChild(make("span", "who muted", "No scores yet"));
+      host.appendChild(empty);
+    } else {
+      sceneRows.slice(0,5).forEach(function(r, i){
+        var row = make("div", "lrow" + (r.date === entry.date ? " me" : ""));
+        row.appendChild(make("span", "rank", String(i+1)));
+        row.appendChild(make("span", "who", r.players.join(", ")));
+        row.appendChild(make("span", "val", String(r.score)));
+        host.appendChild(row);
+      });
+    }
+    show("s-results");
+  }
+
+  /* ── Navigation / lifecycle ── */
+  function show(id){
+    var s = document.querySelectorAll(".screen");
+    for(var i=0;i<s.length;i++) s[i].classList.remove("active");
+    var el = document.getElementById(id);
+    el.classList.add("active");
+    el.scrollTop = 0;
+  }
+  function goMenu(){ releaseWakeLock(); window.location.href = "index.html"; }
+  function playAgain(){ window.location.reload(); }
+
+  /* ── Wake Lock (Build Brief §9) ── */
+  function requestWakeLock(){
+    if(!("wakeLock" in navigator) || wakeLock) return;
+    navigator.wakeLock.request("screen").then(function(w){
+      wakeLock = w;
+      w.addEventListener("release", function(){ wakeLock = null; });
+    }).catch(function(){});
+  }
+  function releaseWakeLock(){ if(wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; } }
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible" && document.getElementById("s-solve").classList.contains("active")) requestWakeLock();
+  });
+
+  /* ── Boot ── */
+  initGame();
+  </script>
+</body>
+</html>

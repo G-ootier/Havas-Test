@@ -229,19 +229,19 @@
 
   <!-- Player Select -->
   <div id="select-screen" class="screen active">
-    <img src="Sources/Connect_4_2013.webp" alt="Connect 4" class="c4-logo">
+    <img src="assets/icon.webp" alt="Connect 4" class="c4-logo">
     <div class="select-title">Choose your players</div>
     <div class="select-sub">Tap a name to change</div>
 
     <div class="vs-row">
       <div class="player-pick" id="pick-p1" onclick="openPicker(1)">
-        <img class="token" src="Sources/yellow.png?v=3" alt="Yellow coin">
+        <img class="token" src="assets/yellow.png" alt="Yellow coin">
         <div class="pick-name" id="pick-p1-name">Player 1</div>
         <div class="pick-hint">tap to change</div>
       </div>
       <div class="vs-label">VS</div>
       <div class="player-pick" id="pick-p2" onclick="openPicker(2)">
-        <img class="token" src="Sources/red.png?v=3" alt="Red coin">
+        <img class="token" src="assets/red.png" alt="Red coin">
         <div class="pick-name" id="pick-p2-name">Player 2</div>
         <div class="pick-hint">tap to change</div>
       </div>
@@ -297,7 +297,7 @@
     <button class="btn btn-ghost" onclick="goBack()">Back to Menu</button>
   </div>
 
-  <script src="shared.js"></script>
+  <script src="../../shared.js"></script>
   <script>
     var COLS = 7, ROWS = 6;
     var state = [];      // [row][col] 0=empty,1=p1,2=p2
@@ -455,7 +455,7 @@
       cell.className = 'cell' + (p === 1 ? ' p1' : p === 2 ? ' p2' : '');
 
       if (p !== 0) {
-        var imgSrc = p === 1 ? 'Sources/yellow.png?v=3' : 'Sources/red.png?v=3';
+        var imgSrc = p === 1 ? 'assets/yellow.png' : 'assets/red.png';
         var finalRot = Math.floor(Math.random() * 360);
 
         if (animate) {
@@ -518,7 +518,7 @@
 
     function updateTurnBar() {
       var isP1 = currentPlayer === 1;
-      document.getElementById('turn-token').src = isP1 ? 'Sources/yellow.png?v=3' : 'Sources/red.png?v=3';
+      document.getElementById('turn-token').src = isP1 ? 'assets/yellow.png' : 'assets/red.png';
       document.getElementById('turn-name').textContent = isP1 ? p1Name : p2Name;
     }
 
@@ -562,7 +562,7 @@
       var isP1 = currentPlayer === 1;
       var name = isP1 ? p1Name : p2Name;
       document.getElementById('win-name').textContent = name + ' wins!';
-      document.getElementById('win-token').src = isP1 ? 'Sources/yellow.png?v=3' : 'Sources/red.png?v=3';
+      document.getElementById('win-token').src = isP1 ? 'assets/yellow.png' : 'assets/red.png';
       setTimeout(function() { showScreen('win-screen'); }, 800);
     }
 

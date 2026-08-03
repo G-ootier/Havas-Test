@@ -1,0 +1,6 @@
+# Internal / non-web files — keep these OFF the public deployment
+*.md
+*.pdf
+.claude
+.playwright-mcp
+.DS_Store

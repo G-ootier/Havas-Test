@@ -1,0 +1,10 @@
+# Local tooling / OS junk
+.claude/
+.playwright-mcp/
+.DS_Store
+.vercel/
+node_modules/
+
+# Internal strategy docs — not part of the web deliverable
+*.md
+*.pdf

@@ -313,7 +313,7 @@
 
   <!-- Desktop redirect -->
   <div id="desktop-screen">
-    <img src="Sources/Hasbro_logo.svg.png" alt="Hasbro" style="width:100px;">
+    <img src="assets/hasbro-logo.png" alt="Hasbro" style="width:100px;">
     <p style="font-size:22px; font-weight:700; color:#FFD700; -webkit-text-stroke:1px #1a1a1a;">Family Game Time</p>
     <p>Open this on your phone to play!</p>
     <div class="qr-wrap">
@@ -325,7 +325,7 @@
   <!-- Setup screen -->
   <div id="setup-page" class="page">
     <div id="setup-screen">
-      <img src="Sources/Hasbro_logo.svg.png" alt="Hasbro" class="setup-hasbro">
+      <img src="assets/hasbro-logo.png" alt="Hasbro" class="setup-hasbro">
       <div class="setup-title">Who's playing?</div>
       <div class="setup-sub">Enter 1 to 8 player names</div>
       <div class="players-list" id="players-list"></div>
@@ -338,7 +338,7 @@
   <div id="games-page" class="page">
     <div id="games-screen">
       <div class="top-bar">
-        <img src="Sources/Hasbro_logo.svg.png" alt="Hasbro" class="hasbro-logo">
+        <img src="assets/hasbro-logo.png" alt="Hasbro" class="hasbro-logo">
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="lang-btn" id="btn-lang">🌐 <span id="lang-label">EN</span></button>
           <button class="btn-players" id="btn-change-players">Players</button>
@@ -350,50 +350,40 @@
 
       <div class="games-list">
 
-        <!-- Monopoly -->
-        <div class="game-row" onclick="location.href='monopoly.html'">
-          <div class="gr-content">
-            <div class="gr-brand gr-brand-monopoly">Monopoly</div>
-            <div class="gr-title">Property Rush</div>
-          </div>
-          <div class="gr-icon"><img src="Sources/Monopoly_Brand.svg" alt="Monopoly"></div>
-        </div>
-
         <!-- Connect 4 -->
-        <div class="game-row" onclick="goTo('connect4.html')">
+        <div class="game-row" onclick="goTo('games/connect4/')">
           <div class="gr-content">
             <div class="gr-brand gr-brand-connect4">Connect 4</div>
             <div class="gr-title">Infinite Connect 4</div>
           </div>
-          <div class="gr-icon"><img src="Sources/Connect_4_2013.webp" alt="Connect 4"></div>
+          <div class="gr-icon"><img src="games/connect4/assets/icon.webp" alt="Connect 4"></div>
         </div>
 
-        <!-- Cluedo — coming soon -->
-        <div class="game-row gr-soon">
+        <!-- Cluedo -->
+        <div class="game-row" onclick="goTo('games/cluedo/')">
           <div class="gr-content">
             <div class="gr-brand gr-brand-cluedo">Cluedo</div>
-            <div class="gr-title">Who Did It?</div>
+            <div class="gr-title">Crime Scene</div>
           </div>
-          <div class="gr-icon"><img src="Sources/Cluedo_2023.webp" alt="Cluedo"></div>
-          <div class="gr-badge">Coming Soon</div>
+          <div class="gr-icon"><img src="games/cluedo/assets/icon.webp" alt="Cluedo"></div>
         </div>
 
         <!-- Operation -->
-        <div class="game-row" onclick="location.href='operation.html'">
+        <div class="game-row" onclick="location.href='games/operation/'">
           <div class="gr-content">
             <div class="gr-brand gr-brand-operation">Operation</div>
             <div class="gr-title">Steady Hands</div>
           </div>
-          <div class="gr-icon"><img src="Sources/Operation_2012_Logo.webp" alt="Operation"></div>
+          <div class="gr-icon"><img src="games/operation/assets/icon.webp" alt="Operation"></div>
         </div>
 
         <!-- Twister -->
-        <div class="game-row" onclick="goTo('twister.html')">
+        <div class="game-row" onclick="goTo('games/twister/')">
           <div class="gr-content">
             <div class="gr-brand gr-brand-twister">Twister</div>
             <div class="gr-title">Colour Rush</div>
           </div>
-          <div class="gr-icon"><img src="Sources/e8d2632aea80df26cb4968461f1e3ac6.webp" alt="Twister"></div>
+          <div class="gr-icon"><img src="games/twister/assets/icon.webp" alt="Twister"></div>
         </div>
 
       </div>
