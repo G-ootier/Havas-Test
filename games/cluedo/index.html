@@ -156,16 +156,6 @@
     .acard .ax{ font-family:'Oswald'; font-size:11px; letter-spacing:2px; color:var(--peacock); text-transform:uppercase; margin-bottom:6px; }
     .acard .val{ font-family:'Oswald'; font-size:16px; color:#fff; line-height:1.05; }
 
-    .callit{ width:100%; max-width:420px; }
-    .callit h3{ font-size:18px; color:var(--mustard); text-align:center; margin-bottom:4px; }
-    .axis-block{ margin-bottom:14px; }
-    .axis-block .axl{ font-family:'Oswald'; font-size:12px; letter-spacing:2px; color:var(--peacock); text-transform:uppercase; margin-bottom:6px; }
-    .opts{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-    .opt{ background:rgba(255,255,255,.07); border:2px solid rgba(255,255,255,.16); border-radius:12px; padding:12px 8px; font-size:14px; font-weight:600; text-align:center; cursor:pointer; transition:all .12s; color:#fff; }
-    .opt.sel{ border-color:var(--mustard); background:rgba(255,199,44,.18); }
-    .opt.correct{ border-color:var(--green); background:rgba(0,122,48,.28); }
-    .opt.wrong{ border-color:var(--scarlett); background:rgba(175,35,28,.28); }
-    .callit-timer{ text-align:center; font-family:'Oswald'; font-size:14px; letter-spacing:2px; color:rgba(255,255,255,.6); margin-bottom:10px; }
 
     /* ── Results ── */
     #s-results .pad{ display:flex; flex-direction:column; align-items:center; gap:14px; min-height:100%; }
@@ -275,7 +265,7 @@
     </div>
   </section>
 
-  <!-- ============ 5 · REVEAL / CALL IT ============ -->
+  <!-- ============ 5 · REVEAL ============ -->
   <section id="s-reveal" class="screen">
     <div class="pad">
       <div class="verdict" id="reveal-verdict">The evidence points to…</div>
@@ -283,16 +273,8 @@
 
       <div class="answer-cards" id="reveal-answers"></div>
 
-      <div class="callit" id="callit-block" style="display:none;">
-        <h3>Call it! — Team guess for bonus</h3>
-        <div class="callit-timer" id="callit-timer">10s</div>
-        <div id="callit-axes"></div>
-        <button class="btn btn-primary" id="callit-lock" onclick="lockCallit()">Lock in guess</button>
-      </div>
-
       <div id="reveal-actions" style="display:flex;flex-direction:column;gap:10px;align-items:center;width:100%;">
-        <button class="btn btn-danger" id="btn-callit" onclick="startCallit()">Call it for bonus (10s)</button>
-        <button class="btn btn-ghost" onclick="toResults()">Skip to results</button>
+        <button class="btn btn-primary" onclick="toResults()">See results</button>
       </div>
     </div>
   </section>
@@ -352,8 +334,7 @@
   ];
 
   /* ── Scoring config (Build Brief §6) ── */
-  var SCORE = { base:100, perSecond:2, tidyMax:30, cleanupBase:40, callitBonus:150 };
-  var CALLIT_SECONDS = 10;
+  var SCORE = { base:100, perSecond:2, tidyMax:30, cleanupBase:40 };
   var LB_KEY = "cluedo_leaderboard";
 
   /* ── DOM helpers (safe construction, no innerHTML) ── */
@@ -743,72 +724,7 @@
       c.appendChild(make("div", "val", scene.solution[a[1]]));
       host.appendChild(c);
     });
-    document.getElementById("callit-block").style.display = "none";
-    document.getElementById("callit-lock").style.display = "";
     document.getElementById("reveal-actions").style.display = "flex";
-  }
-
-  /* ── Call it (optional bonus) ── */
-  var callitSel = {}, callitInt = null, callitStart = 0, callitLocked = false;
-  function startCallit(){
-    callitSel = {}; callitLocked = false;
-    document.getElementById("reveal-actions").style.display = "none";
-    document.getElementById("reveal-verdict").textContent = "Call it! — who, where, with what?";
-    document.getElementById("reveal-answers").style.display = "none"; // hide answers during the guess
-    var host = document.getElementById("callit-axes");
-    clear(host);
-    [["Culprit","culprit"],["Room","room"],["Weapon","weapon"]].forEach(function(a){
-      var opts = HG.shuffle([scene.solution[a[1]]].concat(scene.decoys[a[1]].slice(0,3)));
-      var block = make("div", "axis-block");
-      block.appendChild(make("div", "axl", a[0]));
-      var grid = make("div", "opts");
-      opts.forEach(function(val){
-        var o = make("div", "opt", val);
-        o.addEventListener("click", function(){
-          if(callitLocked) return;
-          Array.prototype.forEach.call(grid.children, function(ch){ ch.classList.remove("sel"); });
-          o.classList.add("sel");
-          callitSel[a[1]] = val;
-        });
-        grid.appendChild(o);
-      });
-      block.appendChild(grid);
-      host.appendChild(block);
-    });
-    document.getElementById("callit-block").style.display = "block";
-    callitStart = Date.now();
-    function tick(){
-      if(callitLocked) return;
-      var remain = Math.max(0, CALLIT_SECONDS*1000 - (Date.now()-callitStart));
-      document.getElementById("callit-timer").textContent = Math.ceil(remain/1000) + "s";
-      if(remain <= 0) lockCallit();
-    }
-    tick();
-    callitInt = setInterval(tick, 150);
-  }
-
-  function lockCallit(){
-    if(callitLocked) return;
-    callitLocked = true;
-    if(callitInt){ clearInterval(callitInt); callitInt = null; }
-    var axes = ["culprit","room","weapon"];
-    var bonus = 0;
-    var blocks = document.getElementById("callit-axes").children;
-    axes.forEach(function(ax, i){
-      var correct = scene.solution[ax];
-      var grid = blocks[i].querySelector(".opts");
-      Array.prototype.forEach.call(grid.children, function(o){
-        if(o.textContent === correct) o.classList.add("correct");
-        else if(o.classList.contains("sel")) o.classList.add("wrong");
-      });
-      if(callitSel[ax] === correct) bonus += SCORE.callitBonus;
-    });
-    teamScore += bonus;
-    document.getElementById("callit-timer").textContent = bonus>0 ? ("+" + bonus + " bonus!") : "No bonus this time";
-    document.getElementById("callit-lock").style.display = "none";
-    document.getElementById("reveal-verdict").textContent = "The evidence points to…";
-    document.getElementById("reveal-answers").style.display = "flex"; // reveal the real answers
-    setTimeout(toResults, 2000);
   }
 
   /* ── Results ── */
